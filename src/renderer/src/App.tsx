@@ -81,6 +81,7 @@ import {
 } from '@/lib/floating-workspace-terminal-actions'
 import { createFloatingWorkspaceTourInteractionSnapshot } from '@/lib/floating-workspace-tour-interaction-snapshot'
 import { requestScrollToCurrentWorkspaceRevealAndRename } from '@/lib/scroll-to-current-workspace-status'
+import { focusTerminalTabSurface } from '@/lib/focus-terminal-tab-surface'
 import { OPEN_WORKSPACE_BOARD_EVENT } from './components/sidebar/useWorkspaceBoardPanel'
 import { WorkspacePortScanner } from './components/ports/WorkspacePortScanner'
 import { CrashReportDialog } from './components/crash-report/CrashReportDialog'
@@ -169,6 +170,7 @@ import { selectActiveTerminalChromeState } from './store/active-terminal-chrome-
 import type { VirtualizedScrollAnchor } from './hooks/useVirtualizedScrollAnchor'
 import type { RemoteWorkspacePatchResult } from '../../shared/remote-workspace-types'
 import type { OnboardingState, UpdateStatus } from '../../shared/types'
+import { FLOATING_TERMINAL_WORKTREE_ID } from '../../shared/constants'
 import {
   getFeatureTipsAppOpenDecision,
   isCliFeatureTipCompleted
@@ -562,7 +564,9 @@ function App(): React.JSX.Element {
     activeView === 'terminal' && activeWorktreeId !== null && !creationLayoutActive
   // Why: once the floating workspace owns tabs, keep it mounted while closed so hidden terminal/browser/editor panes retain local state.
   const shouldMountFloatingTerminalPanel =
-    floatingTerminalEnabled && (floatingTerminalOpen || floatingVisibleTabCount > 0)
+    floatingTerminalEnabled &&
+    (floatingTerminalOpen ||
+      (activeWorktreeId !== FLOATING_TERMINAL_WORKTREE_ID && floatingVisibleTabCount > 0))
   // Why: floating workspace is a transient overlay; hotkey minimize returns focus to the surface the user came from.
   const floatingTerminalReturnFocusRef = useRef<HTMLElement | null>(null)
   const floatingTerminalReturnFocusFrameRef = useRef<number | null>(null)
@@ -634,6 +638,34 @@ function App(): React.JSX.Element {
     },
     [floatingTerminalOpen, rememberFloatingTerminalReturnFocus, restoreFloatingTerminalReturnFocus]
   )
+
+  const activateStandaloneTerminal = useCallback(
+    (tabId: string): void => {
+      setFloatingTerminalOpenWithFocus(false)
+      const store = useAppStore.getState()
+      store.setActiveView('terminal')
+      store.setActiveWorktree(FLOATING_TERMINAL_WORKTREE_ID)
+      store.activateTab(tabId)
+      window.requestAnimationFrame(() => focusTerminalTabSurface(tabId))
+    },
+    [setFloatingTerminalOpenWithFocus]
+  )
+
+  const createStandaloneTerminal = useCallback(async (): Promise<void> => {
+    let homeDirectory: string | undefined
+    try {
+      homeDirectory = await window.api.app.getFloatingTerminalCwd({ path: '~' })
+    } catch (error) {
+      console.error('Failed to resolve the home directory for a standalone terminal', error)
+    }
+    const store = useAppStore.getState()
+    const targetGroupId = store.activeGroupIdByWorktree[FLOATING_TERMINAL_WORKTREE_ID]
+    const tab = store.createTab(FLOATING_TERMINAL_WORKTREE_ID, targetGroupId, undefined, {
+      activate: false,
+      ...(homeDirectory ? { startupCwd: homeDirectory } : {})
+    })
+    activateStandaloneTerminal(tab.id)
+  }, [activateStandaloneTerminal])
 
   useEffect(() => {
     const toggleFloatingTerminal = (): void => {
@@ -2313,6 +2345,8 @@ function App(): React.JSX.Element {
                               )}
                             >
                               <Sidebar
+                                onActivateStandaloneTerminal={activateStandaloneTerminal}
+                                onCreateStandaloneTerminal={createStandaloneTerminal}
                                 worktreeScrollOffsetRef={worktreeSidebarScrollOffsetRef}
                                 worktreeScrollAnchorRef={worktreeSidebarScrollAnchorRef}
                               />
@@ -2334,6 +2368,8 @@ function App(): React.JSX.Element {
                           )}
                         >
                           <Sidebar
+                            onActivateStandaloneTerminal={activateStandaloneTerminal}
+                            onCreateStandaloneTerminal={createStandaloneTerminal}
                             worktreeScrollOffsetRef={worktreeSidebarScrollOffsetRef}
                             worktreeScrollAnchorRef={worktreeSidebarScrollAnchorRef}
                           />
@@ -2384,7 +2420,9 @@ function App(): React.JSX.Element {
                                     'Terminal, browser, or editor rendering failed in this workspace. Retry to remount it.'
                                   )}
                                 >
-                                  <Terminal />
+                                  <Terminal
+                                    excludeFloatingWorkspace={shouldMountFloatingTerminalPanel}
+                                  />
                                 </RecoverableRenderErrorBoundary>
                               </Suspense>
                             </div>

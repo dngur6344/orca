@@ -309,6 +309,7 @@ import {
 import { getFolderWorkspaceCardPrDisplay } from './folder-workspace-card-pr-display'
 import { getRenderedWorktreesInSidebarOrder } from './worktree-sidebar-row-preference'
 import { getCyclableWorktreeIds, resolveCycledWorktreeId } from './worktree-keyboard-cycle'
+import { getCollapsibleSidebarGroupKeys } from './sidebar-group-collapse'
 
 export {
   getScrollTopToRevealBounds,
@@ -5171,6 +5172,7 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
 })
 
 type WorktreeListProps = {
+  collapseAllProjectsRequest?: number
   scrollOffsetRef: React.MutableRefObject<number>
   scrollAnchorRef: React.MutableRefObject<VirtualizedScrollAnchor>
   workspaceBoardOpen?: boolean
@@ -5185,6 +5187,7 @@ export function installWorktreeVisibleRefreshVisibilityListener(onChange: () => 
 }
 
 const WorktreeList = React.memo(function WorktreeList({
+  collapseAllProjectsRequest = 0,
   scrollOffsetRef,
   scrollAnchorRef,
   workspaceBoardOpen = false,
@@ -5549,6 +5552,8 @@ const WorktreeList = React.memo(function WorktreeList({
   const worktrees = visibleWorktrees
   const collapsedGroups = useAppStore((s) => s.collapsedGroups)
   const toggleGroup = useAppStore((s) => s.toggleCollapsedGroup)
+  const collapseGroups = useAppStore((s) => s.collapseGroups)
+  const handledCollapseAllProjectsRequestRef = useRef(0)
 
   // Why: manual header order is bound to state.repos; Recent/Smart derive order from the sorted worktree stream.
   const repos = useAppStore((s) => s.repos)
@@ -5824,6 +5829,13 @@ const WorktreeList = React.memo(function WorktreeList({
       workspaceHostScope
     ]
   )
+  useEffect(() => {
+    if (collapseAllProjectsRequest <= handledCollapseAllProjectsRequestRef.current) {
+      return
+    }
+    handledCollapseAllProjectsRequestRef.current = collapseAllProjectsRequest
+    collapseGroups(getCollapsibleSidebarGroupKeys(sectionRows))
+  }, [collapseAllProjectsRequest, collapseGroups, sectionRows])
   const renderedSidebarRowKeys = useMemo(() => {
     const keys = new Set<string>()
     for (const row of sectionRows) {

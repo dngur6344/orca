@@ -4243,7 +4243,9 @@
           "5c9c7c16aa": "워크스페이스를 만들려면 프로젝트를 추가하세요.",
           "ca6f729da2": "새 워크스페이스({{value0}})",
           "a30e34eb5c": "워크스페이스 보드 닫기",
-          "25a95899c9": "프로젝트 추가"
+          "25a95899c9": "프로젝트 추가",
+          "collapseAllProjects": "모든 프로젝트 접기",
+          "collapseAllWorkspaces": "모든 워크스페이스 접기"
         },
         "SidebarNav": {
           "80611a8b10": "검색",
@@ -5070,6 +5072,14 @@
           "3b7ea51793": "검색 지우기",
           "7f1c2e94a5": "검색어가 너무 깁니다 — 보드가 필터링되지 않았습니다",
           "9a4d0f6b21": "너무 김"
+        },
+        "StandaloneTerminalSidebarSection": {
+          "terminalNumber": "터미널 {{number}}",
+          "newTerminal": "새 터미널",
+          "terminals": "터미널",
+          "terminalList": "터미널 목록",
+          "renameTerminal": "터미널 이름 변경",
+          "renameNamedTerminal": "{{name}} 이름 변경"
         }
       },
       "shared": {

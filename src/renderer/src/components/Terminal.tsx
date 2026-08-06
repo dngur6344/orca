@@ -12,6 +12,7 @@ import {
 } from '@/constants/terminal'
 import { useAppStore } from '../store'
 import { folderWorkspaceKey } from '../../../shared/workspace-scope'
+import { FLOATING_TERMINAL_WORKTREE_ID } from '../../../shared/constants'
 import { useAllWorktrees } from '../store/selectors'
 import { getConnectionId } from '../lib/connection-context'
 import { basename } from '../lib/path'
@@ -290,7 +291,11 @@ function getKeybindingContext(target: EventTarget | null): KeybindingContext {
     : 'app'
 }
 
-function Terminal(): React.JSX.Element | null {
+type TerminalProps = {
+  excludeFloatingWorkspace?: boolean
+}
+
+function Terminal({ excludeFloatingWorkspace = false }: TerminalProps): React.JSX.Element | null {
   const mountedWorktreeIdsRef = useRef(new Set<string>())
   // Why an array: browser-guest eviction needs activation order (LRU), not just membership.
   const browserGuestWorktreeRecencyRef = useRef<string[]>([])
@@ -305,23 +310,31 @@ function Terminal(): React.JSX.Element | null {
   const terminalWorktreeParkingTimersRef = useRef(new Map<string, number>())
   const allWorktrees = useAllWorktrees()
   const folderWorkspaces = useAppStore((s) => s.folderWorkspaces)
+  const tabsByWorktree = useAppStore((s) => s.tabsByWorktree)
+  const standaloneTerminalPath =
+    tabsByWorktree[FLOATING_TERMINAL_WORKTREE_ID]?.find((tab) => tab.startupCwd)?.startupCwd ?? ''
   const workspaceSurfaces = useMemo(
     () => [
       ...allWorktrees.map((worktree) => ({ id: worktree.id, path: worktree.path })),
       ...folderWorkspaces.map((workspace) => ({
         id: folderWorkspaceKey(workspace.id),
         path: workspace.folderPath
-      }))
+      })),
+      ...(excludeFloatingWorkspace
+        ? []
+        : [{ id: FLOATING_TERMINAL_WORKTREE_ID, path: standaloneTerminalPath }])
     ],
-    [allWorktrees, folderWorkspaces]
+    [allWorktrees, excludeFloatingWorkspace, folderWorkspaces, standaloneTerminalPath]
   )
   const activeWorktreeId = useAppStore((s) => s.activeWorktreeId)
-  const renderedActiveWorktreeId = activeWorktreeId
+  const renderedActiveWorktreeId =
+    excludeFloatingWorkspace && activeWorktreeId === FLOATING_TERMINAL_WORKTREE_ID
+      ? null
+      : activeWorktreeId
   const activeWorktreeDeferralHostId = useAppStore((s) =>
     getResolvedExecutionHostIdForWorktree(s, renderedActiveWorktreeId)
   )
   const activeView = useAppStore((s) => s.activeView)
-  const tabsByWorktree = useAppStore((s) => s.tabsByWorktree)
   const pendingStartupByTabId = useAppStore((s) => s.pendingStartupByTabId)
   const terminalParkingEnabled = useAppStore((s) => s.settings?.terminalHiddenViewParking !== false)
   const terminalSshParkingEnabled = useAppStore((s) => s.settings?.terminalSshViewParking !== false)

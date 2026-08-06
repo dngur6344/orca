@@ -885,6 +885,7 @@ export type UISlice = {
   setFilterRepoIds: (ids: string[]) => void
   collapsedGroups: Set<string>
   toggleCollapsedGroup: (key: string) => void
+  collapseGroups: (keys: readonly string[]) => void
   worktreeCardProperties: WorktreeCardProperty[]
   _worktreeCardModeDefaulted: boolean
   setWorktreeCardMode: (mode: WorktreeCardMode) => void
@@ -2104,6 +2105,21 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
         next.delete(key)
       } else {
         next.add(key)
+      }
+      window.api.ui.set({ collapsedGroups: [...next] }).catch(console.error)
+      return { collapsedGroups: next }
+    }),
+  collapseGroups: (keys) =>
+    set((s) => {
+      if (keys.length === 0) {
+        return s
+      }
+      const next = new Set(s.collapsedGroups)
+      for (const key of keys) {
+        next.add(key)
+      }
+      if (next.size === s.collapsedGroups.size) {
+        return s
       }
       window.api.ui.set({ collapsedGroups: [...next] }).catch(console.error)
       return { collapsedGroups: next }
