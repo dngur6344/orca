@@ -136,22 +136,12 @@ export function StandaloneTerminalSidebarSection({
                   active && 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground'
                 )}
               >
-                <button
-                  type="button"
-                  aria-current={active ? 'page' : undefined}
-                  className={cn(
-                    'flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-1 text-left text-[13px] font-medium tracking-tight',
-                    !active &&
-                      'text-worktree-sidebar-foreground/60 hover:text-worktree-sidebar-foreground'
-                  )}
-                  onClick={() => onActivateTerminal(tab.id)}
-                  onDoubleClick={() => beginRename(tab, index)}
-                >
-                  <SquareTerminal
-                    className={cn('size-4 shrink-0', !active && 'opacity-50')}
-                    strokeWidth={active ? 2.25 : 1.75}
-                  />
-                  {renaming ? (
+                {renaming ? (
+                  <div className="flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-1">
+                    <SquareTerminal
+                      className={cn('size-4 shrink-0', !active && 'opacity-50')}
+                      strokeWidth={active ? 2.25 : 1.75}
+                    />
                     <Input
                       autoFocus
                       data-standalone-terminal-rename-input
@@ -162,8 +152,6 @@ export function StandaloneTerminalSidebarSection({
                         'Rename terminal'
                       )}
                       onChange={(event) => setRenameValue(event.target.value)}
-                      onClick={(event) => event.stopPropagation()}
-                      onDoubleClick={(event) => event.stopPropagation()}
                       onBlur={() => commitRename(tab.id)}
                       onKeyDown={(event) => {
                         event.stopPropagation()
@@ -174,10 +162,27 @@ export function StandaloneTerminalSidebarSection({
                         }
                       }}
                     />
-                  ) : (
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    data-standalone-terminal-tab={tab.id}
+                    aria-current={active ? 'page' : undefined}
+                    className={cn(
+                      'flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-1 text-left text-[13px] font-medium tracking-tight',
+                      !active &&
+                        'text-worktree-sidebar-foreground/60 hover:text-worktree-sidebar-foreground'
+                    )}
+                    onClick={() => onActivateTerminal(tab.id)}
+                    onDoubleClick={() => beginRename(tab, index)}
+                  >
+                    <SquareTerminal
+                      className={cn('size-4 shrink-0', !active && 'opacity-50')}
+                      strokeWidth={active ? 2.25 : 1.75}
+                    />
                     <span className="min-w-0 flex-1 truncate">{label}</span>
-                  )}
-                </button>
+                  </button>
+                )}
                 {!renaming ? (
                   <Button
                     type="button"

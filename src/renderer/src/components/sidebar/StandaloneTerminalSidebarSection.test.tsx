@@ -25,7 +25,11 @@ vi.mock('@/i18n/i18n', () => ({
 
 import { StandaloneTerminalSidebarSection } from './StandaloneTerminalSidebarSection'
 
-function terminal(id: string, customTitle: string | null = null): TerminalTab {
+function terminal(
+  id: string,
+  customTitle: string | null = null,
+  overrides: Partial<TerminalTab> = {}
+): TerminalTab {
   return {
     id,
     ptyId: null,
@@ -35,7 +39,8 @@ function terminal(id: string, customTitle: string | null = null): TerminalTab {
     customTitle,
     color: null,
     sortOrder: 0,
-    createdAt: 1
+    createdAt: 1,
+    ...overrides
   }
 }
 
@@ -104,9 +109,43 @@ describe('StandaloneTerminalSidebarSection', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Rename Terminal 1' }))
     const input = screen.getByRole('textbox', { name: 'Rename terminal' })
+    expect(input.closest('button')).toBeNull()
     fireEvent.change(input, { target: { value: 'Server logs' } })
     fireEvent.blur(input)
 
     expect(mocks.setTabCustomTitle).toHaveBeenCalledWith('terminal-1', 'Server logs')
+  })
+
+  it('prefers a custom title and falls back to the terminal number', () => {
+    mocks.state = {
+      ...mocks.state,
+      tabsByWorktree: {
+        [FLOATING_TERMINAL_WORKTREE_ID]: [
+          terminal('terminal-1', 'Build logs'),
+          terminal('terminal-2', null, { defaultTitle: undefined, title: '' })
+        ]
+      }
+    }
+    renderSection()
+
+    expect(screen.getByRole('button', { name: 'Build logs' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Terminal 2' })).toBeTruthy()
+  })
+
+  it('clears the custom terminal name from whitespace input', () => {
+    mocks.state = {
+      ...mocks.state,
+      tabsByWorktree: {
+        [FLOATING_TERMINAL_WORKTREE_ID]: [terminal('terminal-1', 'Server logs')]
+      }
+    }
+    renderSection()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Server logs' }))
+    const input = screen.getByRole('textbox', { name: 'Rename terminal' })
+    fireEvent.change(input, { target: { value: '   ' } })
+    fireEvent.blur(input)
+
+    expect(mocks.setTabCustomTitle).toHaveBeenCalledWith('terminal-1', null)
   })
 })

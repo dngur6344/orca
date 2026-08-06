@@ -91,6 +91,25 @@ test.describe('Standalone terminal sidebar', () => {
     ).toBeVisible()
 
     await orcaPage.evaluate((worktreeId) => {
+      const store = window.__store
+      const state = store?.getState()
+      if (!store || !state) {
+        return
+      }
+      store.setState({
+        activeTabType: 'editor',
+        activeTabTypeByWorktree: {
+          ...state.activeTabTypeByWorktree,
+          [worktreeId]: 'editor'
+        }
+      })
+    }, FLOATING_TERMINAL_WORKTREE_ID)
+    await section.locator(`[data-standalone-terminal-tab=${JSON.stringify(firstState.id)}]`).click()
+    await expect
+      .poll(() => orcaPage.evaluate(() => window.__store?.getState().activeTabType ?? null))
+      .toBe('terminal')
+
+    await orcaPage.evaluate((worktreeId) => {
       const state = window.__store?.getState()
       state?.setActiveView('terminal')
       state?.setActiveWorktree(worktreeId)

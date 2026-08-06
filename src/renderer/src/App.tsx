@@ -82,6 +82,10 @@ import {
 import { createFloatingWorkspaceTourInteractionSnapshot } from '@/lib/floating-workspace-tour-interaction-snapshot'
 import { requestScrollToCurrentWorkspaceRevealAndRename } from '@/lib/scroll-to-current-workspace-status'
 import { focusTerminalTabSurface } from '@/lib/focus-terminal-tab-surface'
+import {
+  activateStandaloneTerminalState,
+  createStandaloneTerminalAtHome
+} from '@/lib/standalone-terminal-workspace-actions'
 import { OPEN_WORKSPACE_BOARD_EVENT } from './components/sidebar/useWorkspaceBoardPanel'
 import { WorkspacePortScanner } from './components/ports/WorkspacePortScanner'
 import { CrashReportDialog } from './components/crash-report/CrashReportDialog'
@@ -642,29 +646,14 @@ function App(): React.JSX.Element {
   const activateStandaloneTerminal = useCallback(
     (tabId: string): void => {
       setFloatingTerminalOpenWithFocus(false)
-      const store = useAppStore.getState()
-      store.setActiveView('terminal')
-      store.setActiveWorktree(FLOATING_TERMINAL_WORKTREE_ID)
-      store.activateTab(tabId)
+      activateStandaloneTerminalState(tabId)
       window.requestAnimationFrame(() => focusTerminalTabSurface(tabId))
     },
     [setFloatingTerminalOpenWithFocus]
   )
 
   const createStandaloneTerminal = useCallback(async (): Promise<void> => {
-    let homeDirectory: string | undefined
-    try {
-      homeDirectory = await window.api.app.getFloatingTerminalCwd({ path: '~' })
-    } catch (error) {
-      console.error('Failed to resolve the home directory for a standalone terminal', error)
-    }
-    const store = useAppStore.getState()
-    const targetGroupId = store.activeGroupIdByWorktree[FLOATING_TERMINAL_WORKTREE_ID]
-    const tab = store.createTab(FLOATING_TERMINAL_WORKTREE_ID, targetGroupId, undefined, {
-      activate: false,
-      ...(homeDirectory ? { startupCwd: homeDirectory } : {})
-    })
-    activateStandaloneTerminal(tab.id)
+    await createStandaloneTerminalAtHome(activateStandaloneTerminal)
   }, [activateStandaloneTerminal])
 
   useEffect(() => {
