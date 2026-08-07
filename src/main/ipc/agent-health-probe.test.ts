@@ -22,7 +22,7 @@ describe('agent health probe', () => {
     ])
   })
 
-  it('probes both CLIs and reads Codex update availability from doctor', async () => {
+  it('automatically reads update availability for both CLIs', async () => {
     const runCommand = vi.fn(async (provider: 'claude' | 'codex', args: string[]) => {
       if (args[0] === '--version') {
         return {
@@ -32,6 +32,9 @@ describe('agent health probe', () => {
       }
       if (args[0] === 'update') {
         return { stdout: 'Update Codex or Claude Code', stderr: '' }
+      }
+      if (args[0] === 'config') {
+        return { stdout: 'stable\n', stderr: '' }
       }
       const error = Object.assign(new Error('doctor reported a failed check'), {
         stdout: JSON.stringify({
@@ -50,10 +53,12 @@ describe('agent health probe', () => {
       })
       throw error
     })
+    const resolveClaudeVersion = vi.fn(async () => '1.0.62')
 
-    const snapshots = await probeAgentHealth(undefined, { runCommand })
+    const snapshots = await probeAgentHealth(undefined, { runCommand, resolveClaudeVersion })
 
-    expect(runCommand).toHaveBeenCalledTimes(5)
+    expect(runCommand).toHaveBeenCalledTimes(6)
+    expect(resolveClaudeVersion).toHaveBeenCalledWith('stable')
     expect(
       runCommand.mock.calls.some(
         ([provider, args]) => provider === 'claude' && args[0] === 'doctor'
@@ -66,8 +71,8 @@ describe('agent health probe', () => {
         health: 'healthy',
         version: '1.0.61',
         checks: [{ id: 'cli', status: 'ok' }],
-        latestVersion: null,
-        updateAvailability: 'unknown',
+        latestVersion: '1.0.62',
+        updateAvailability: 'available',
         updateSupported: true
       },
       {
@@ -95,10 +100,17 @@ describe('agent health probe', () => {
       }
       return { stdout: '1.0.61 (Claude Code)', stderr: '' }
     })
+    const resolveClaudeVersion = vi.fn(async () => '1.0.61')
 
-    const snapshots = await probeAgentHealth(undefined, { runCommand })
+    const snapshots = await probeAgentHealth(undefined, {
+      runCommand,
+      resolveClaudeVersion
+    })
+    const claude = snapshots.find((snapshot) => snapshot.provider === 'claude')
     const codex = snapshots.find((snapshot) => snapshot.provider === 'codex')
 
+    expect(resolveClaudeVersion).toHaveBeenCalledWith('latest')
+    expect(claude).toMatchObject({ updateAvailability: 'current' })
     expect(codex).toMatchObject({
       cliStatus: 'unavailable',
       health: 'unhealthy',

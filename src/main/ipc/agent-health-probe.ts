@@ -17,6 +17,7 @@ import { buildLocalPreflightEnv } from './preflight-local-env'
 import { getPreflightWslTarget, type PreflightRuntimeContext } from './preflight-runtime-target'
 import { runPreflightCommandInWsl } from './preflight-wsl-command'
 import { shellQuote, type PreflightCommandResult } from './preflight-command-exec'
+import { resolveClaudeLatestVersion, type ClaudeUpdateChannel } from './agent-version-lookup'
 
 const execFileAsync = promisify(execFile)
 const AGENT_HEALTH_TIMEOUT_MS = 12_000
@@ -39,6 +40,7 @@ type CommandRunner = (
 type AgentCommandDependencies = {
   runCommand?: CommandRunner
   now?: () => number
+  resolveClaudeVersion?: (channel: ClaudeUpdateChannel) => Promise<string | null>
 }
 
 type CodexDoctorReport = {
@@ -161,10 +163,19 @@ function updateAvailability(
   return compareAppVersions(version, latestVersion) < 0 ? 'available' : 'current'
 }
 
+function claudeUpdateChannel(
+  result: PromiseSettledResult<PreflightCommandResult>
+): ClaudeUpdateChannel {
+  return result.status === 'fulfilled' && result.value.stdout.trim() === 'stable'
+    ? 'stable'
+    : 'latest'
+}
+
 async function probeProvider(
   provider: AgentHealthProvider,
   context: PreflightRuntimeContext | undefined,
   runCommand: CommandRunner,
+  resolveClaudeVersion: (channel: ClaudeUpdateChannel) => Promise<string | null>,
   now: () => number
 ): Promise<AgentHealthSnapshot> {
   const startedAt = now()
@@ -226,10 +237,11 @@ async function probeProvider(
     }
   }
 
-  const updateSupported = await updateSupportPromise.then(
-    () => true,
-    () => false
-  )
+  const [updateSupportAttempt, channelAttempt] = await Promise.allSettled([
+    updateSupportPromise,
+    runCommand(provider, ['config', 'get', 'autoUpdatesChannel'], context, AGENT_HEALTH_TIMEOUT_MS)
+  ])
+  latestVersion = await resolveClaudeVersion(claudeUpdateChannel(channelAttempt)).catch(() => null)
   const checkedAt = now()
   return {
     provider,
@@ -239,9 +251,9 @@ async function probeProvider(
     durationMs: Math.max(0, checkedAt - startedAt),
     checkedAt,
     checks,
-    latestVersion: null,
-    updateAvailability: 'unknown',
-    updateSupported
+    latestVersion,
+    updateAvailability: updateAvailability(version, latestVersion),
+    updateSupported: updateSupportAttempt.status === 'fulfilled'
   }
 }
 
@@ -251,9 +263,10 @@ export function probeAgentHealth(
 ): Promise<AgentHealthSnapshot[]> {
   const runCommand = dependencies.runCommand ?? runAgentCommand
   const now = dependencies.now ?? Date.now
+  const resolveClaudeVersion = dependencies.resolveClaudeVersion ?? resolveClaudeLatestVersion
   return Promise.all(
     (['claude', 'codex'] as const).map((provider) =>
-      probeProvider(provider, context, runCommand, now)
+      probeProvider(provider, context, runCommand, resolveClaudeVersion, now)
     )
   )
 }

@@ -3598,7 +3598,7 @@
             "latestVersion": "Latest version",
             "updateFailed": "Update failed",
             "updateAvailable": "v{{value0}} available",
-            "checkForUpdates": "Check for updates",
+            "checkForUpdates": "Update status unavailable",
             "retryUpdate": "Retry",
             "updateNow": "Update",
             "checkAndUpdate": "Check & update"

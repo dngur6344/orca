@@ -105,7 +105,10 @@ function updateStatusLabel(
   }
   return snapshot.updateAvailability === 'current'
     ? translate('auto.components.status.bar.AgentHealthRows.latestVersion', 'Latest version')
-    : translate('auto.components.status.bar.AgentHealthRows.checkForUpdates', 'Check for updates')
+    : translate(
+        'auto.components.status.bar.AgentHealthRows.checkForUpdates',
+        'Update status unavailable'
+      )
 }
 
 function updateButtonLabel(

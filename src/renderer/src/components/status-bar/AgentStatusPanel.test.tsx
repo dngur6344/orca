@@ -104,7 +104,7 @@ describe('AgentStatusPanel', () => {
     expect(markup).toContain('Available')
     expect(markup).toContain('v1.0.61')
     expect(markup).not.toContain('42 ms')
-    expect(markup).toContain('Check for updates')
+    expect(markup).toContain('Update status unavailable')
     expect(markup).toContain('Check &amp; update')
     expect(markup).toContain('CLI: Passed')
     expect(markup).toContain('active@claude.test')

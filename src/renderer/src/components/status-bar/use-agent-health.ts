@@ -9,6 +9,7 @@ import { getLocalAgentPreflightContext } from '@/lib/local-preflight-context'
 import { callRuntimeRpc, RuntimeRpcCallError } from '@/runtime/runtime-rpc-client'
 
 const AGENT_HEALTH_POLL_MS = 15 * 60_000
+const AGENT_HEALTH_TIMEOUT_MS = 35_000
 const AGENT_UPDATE_TIMEOUT_MS = 5 * 60_000 + 15_000
 
 type AgentHealthProbeState = {
@@ -36,7 +37,7 @@ async function requestAgentHealth(environmentId: string | null): Promise<AgentHe
       { kind: 'environment', environmentId },
       'preflight.probeAgentHealth',
       undefined,
-      { timeoutMs: 15_000 }
+      { timeoutMs: AGENT_HEALTH_TIMEOUT_MS }
     )
   } catch (error) {
     if (error instanceof RuntimeRpcCallError && error.code === 'method_not_found') {
