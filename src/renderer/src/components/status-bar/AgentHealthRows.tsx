@@ -76,10 +76,25 @@ function checkDotClass(status: AgentHealthSnapshot['checks'][number]['status']):
   return status === 'warning' ? 'bg-yellow-500' : 'bg-destructive'
 }
 
+function hasAvailableUpdate(snapshot: AgentHealthSnapshot): boolean {
+  return snapshot.updateAvailability === 'available' && Boolean(snapshot.latestVersion)
+}
+
+function updateCheckUnavailable(snapshot: AgentHealthSnapshot): boolean {
+  return snapshot.updateAvailability !== 'current' && !hasAvailableUpdate(snapshot)
+}
+
 function updateStatusLabel(
   snapshot: AgentHealthSnapshot,
-  updateState: AgentUpdateUiState | undefined
+  updateState: AgentUpdateUiState | undefined,
+  pending: boolean
 ): string {
+  if (pending && updateCheckUnavailable(snapshot)) {
+    return translate(
+      'auto.components.status.bar.AgentHealthRows.checkingForUpdates',
+      'Checking for updates…'
+    )
+  }
   switch (updateState?.status) {
     case 'updating':
       return translate('auto.components.status.bar.AgentHealthRows.updating', 'Updating…')
@@ -96,7 +111,7 @@ function updateStatusLabel(
     case undefined:
       break
   }
-  if (snapshot.updateAvailability === 'available' && snapshot.latestVersion) {
+  if (hasAvailableUpdate(snapshot)) {
     return translate(
       'auto.components.status.bar.AgentHealthRows.updateAvailable',
       'v{{value0}} available',
@@ -111,19 +126,14 @@ function updateStatusLabel(
       )
 }
 
-function updateButtonLabel(
-  snapshot: AgentHealthSnapshot,
-  updateState: AgentUpdateUiState | undefined
-): string {
+function updateButtonLabel(updateState: AgentUpdateUiState | undefined): string {
   if (updateState?.status === 'updating') {
     return translate('auto.components.status.bar.AgentHealthRows.updating', 'Updating…')
   }
   if (updateState?.status === 'failed') {
     return translate('auto.components.status.bar.AgentHealthRows.retryUpdate', 'Retry')
   }
-  return snapshot.updateAvailability === 'available'
-    ? translate('auto.components.status.bar.AgentHealthRows.updateNow', 'Update')
-    : translate('auto.components.status.bar.AgentHealthRows.checkAndUpdate', 'Check & update')
+  return translate('auto.components.status.bar.AgentHealthRows.updateNow', 'Update')
 }
 
 function shouldShowUpdateButton(
@@ -136,7 +146,18 @@ function shouldShowUpdateButton(
   if (updateState?.status === 'current' || updateState?.status === 'updated') {
     return false
   }
-  return snapshot.updateAvailability !== 'current'
+  return hasAvailableUpdate(snapshot)
+}
+
+function shouldShowCheckButton(
+  snapshot: AgentHealthSnapshot,
+  updateState: AgentUpdateUiState | undefined
+): boolean {
+  return (
+    snapshot.cliStatus === 'available' &&
+    updateCheckUnavailable(snapshot) &&
+    updateState?.status !== 'updating'
+  )
 }
 
 export function AgentHealthRows({
@@ -145,6 +166,7 @@ export function AgentHealthRows({
   pending,
   mode,
   updateState,
+  onCheck,
   onUpdate
 }: {
   snapshot: AgentHealthSnapshot | null
@@ -152,6 +174,7 @@ export function AgentHealthRows({
   pending: boolean
   mode: StatusBarUsageMode
   updateState?: AgentUpdateUiState
+  onCheck: (provider: AgentHealthProvider) => void
   onUpdate: (provider: AgentHealthProvider) => void
 }): React.JSX.Element {
   const checked = snapshot ? formatTimeAgo(snapshot.checkedAt) : null
@@ -185,17 +208,31 @@ export function AgentHealthRows({
             ) : null}
           </div>
         ) : null}
-        {snapshot &&
-        (snapshot.updateSupported === true ||
-          snapshot.updateAvailability === 'available' ||
-          snapshot.updateAvailability === 'current') ? (
+        {snapshot && snapshot.cliStatus === 'available' ? (
           <div className="col-span-2 mt-0.5 flex items-center justify-between gap-2 border-t border-border/70 pt-1.5">
             <span
               className={`text-[10px] ${updateState?.status === 'failed' ? 'text-destructive' : 'text-muted-foreground'}`}
             >
-              {updateStatusLabel(snapshot, updateState)}
+              {updateStatusLabel(snapshot, updateState, pending)}
             </span>
-            {shouldShowUpdateButton(snapshot, updateState) ? (
+            {shouldShowCheckButton(snapshot, updateState) ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={pending}
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  onCheck(snapshot.provider)
+                }}
+              >
+                {pending ? <Loader2 className="size-3 animate-spin" /> : null}
+                {pending
+                  ? translate('auto.components.status.bar.AgentHealthRows.checking', 'Checking')
+                  : translate('auto.components.status.bar.AgentHealthRows.checkNow', 'Check')}
+              </Button>
+            ) : shouldShowUpdateButton(snapshot, updateState) ? (
               <Button
                 type="button"
                 variant="outline"
@@ -210,7 +247,7 @@ export function AgentHealthRows({
                 {updateState?.status === 'updating' ? (
                   <Loader2 className="size-3 animate-spin" />
                 ) : null}
-                {updateButtonLabel(snapshot, updateState)}
+                {updateButtonLabel(updateState)}
               </Button>
             ) : null}
           </div>

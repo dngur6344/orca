@@ -11,13 +11,16 @@ import { callRuntimeRpc, RuntimeRpcCallError } from '@/runtime/runtime-rpc-clien
 const AGENT_HEALTH_POLL_MS = 15 * 60_000
 const AGENT_HEALTH_TIMEOUT_MS = 35_000
 const AGENT_UPDATE_TIMEOUT_MS = 5 * 60_000 + 15_000
+const AGENT_HEALTH_PROVIDERS = ['claude', 'codex'] as const
 
 type AgentHealthProbeState = {
   snapshots: AgentHealthSnapshot[]
   isProbing: boolean
+  pendingProviders: Partial<Record<AgentHealthProvider, boolean>>
   loadError: boolean
   updateStates: Partial<Record<AgentHealthProvider, AgentUpdateUiState>>
   refresh: () => Promise<AgentHealthSnapshot[]>
+  check: (provider: AgentHealthProvider) => Promise<AgentHealthSnapshot | null>
   update: (provider: AgentHealthProvider) => Promise<AgentUpdateResult | null>
 }
 
@@ -26,12 +29,7 @@ export type AgentUpdateUiState = {
   version: string | null
 }
 
-async function requestAgentHealth(environmentId: string | null): Promise<AgentHealthSnapshot[]> {
-  if (!environmentId) {
-    return window.api.preflight.probeAgentHealth(
-      getLocalAgentPreflightContext(useAppStore.getState())
-    )
-  }
+async function requestLegacyAgentHealth(environmentId: string): Promise<AgentHealthSnapshot[]> {
   try {
     return await callRuntimeRpc<AgentHealthSnapshot[]>(
       { kind: 'environment', environmentId },
@@ -44,6 +42,31 @@ async function requestAgentHealth(environmentId: string | null): Promise<AgentHe
       return []
     }
     throw error
+  }
+}
+
+async function requestAgentHealthProvider(
+  environmentId: string | null,
+  provider: AgentHealthProvider,
+  requestLegacy: () => Promise<AgentHealthSnapshot[]>
+): Promise<AgentHealthSnapshot | null> {
+  if (!environmentId) {
+    const context = getLocalAgentPreflightContext(useAppStore.getState())
+    return window.api.preflight.probeAgentHealthProvider({ ...context, provider })
+  }
+  try {
+    return await callRuntimeRpc<AgentHealthSnapshot>(
+      { kind: 'environment', environmentId },
+      'preflight.probeAgentHealthProvider',
+      { provider },
+      { timeoutMs: AGENT_HEALTH_TIMEOUT_MS }
+    )
+  } catch (error) {
+    if (!(error instanceof RuntimeRpcCallError) || error.code !== 'method_not_found') {
+      throw error
+    }
+    const snapshots = await requestLegacy()
+    return snapshots.find((snapshot) => snapshot.provider === provider) ?? null
   }
 }
 
@@ -68,17 +91,19 @@ export function useAgentHealth(
   enabled = true
 ): AgentHealthProbeState {
   const [snapshots, setSnapshots] = useState<AgentHealthSnapshot[]>([])
-  const [isProbing, setIsProbing] = useState(false)
-  const [loadError, setLoadError] = useState(false)
+  const [pendingProviders, setPendingProviders] = useState<
+    Partial<Record<AgentHealthProvider, boolean>>
+  >({})
+  const [failedProviders, setFailedProviders] = useState<
+    Partial<Record<AgentHealthProvider, boolean>>
+  >({})
   const [updateStates, setUpdateStates] = useState<
     Partial<Record<AgentHealthProvider, AgentUpdateUiState>>
   >({})
   const targetKey = environmentId ? `runtime:${environmentId}` : 'local'
   const targetKeyRef = useRef(targetKey)
-  const pendingRef = useRef<{
-    key: string
-    promise: Promise<AgentHealthSnapshot[]>
-  } | null>(null)
+  const pendingRef = useRef(new Map<string, Promise<AgentHealthSnapshot | null>>())
+  const legacyPendingRef = useRef(new Map<string, Promise<AgentHealthSnapshot[]>>())
   const mountedRef = useRef(true)
   const updatePendingRef = useRef(new Map<string, Promise<AgentUpdateResult | null>>())
   targetKeyRef.current = targetKey
@@ -90,39 +115,78 @@ export function useAgentHealth(
     }
   }, [])
 
+  const check = useCallback(
+    (provider: AgentHealthProvider): Promise<AgentHealthSnapshot | null> => {
+      if (!enabled) {
+        return Promise.resolve(null)
+      }
+      const pendingKey = `${targetKey}:${provider}`
+      const existing = pendingRef.current.get(pendingKey)
+      if (existing) {
+        return existing
+      }
+      setPendingProviders((states) => ({ ...states, [provider]: true }))
+      const requestLegacy = (): Promise<AgentHealthSnapshot[]> => {
+        if (!environmentId) {
+          return Promise.resolve([])
+        }
+        const existingLegacy = legacyPendingRef.current.get(targetKey)
+        if (existingLegacy) {
+          return existingLegacy
+        }
+        const legacyPending = requestLegacyAgentHealth(environmentId).finally(() => {
+          legacyPendingRef.current.delete(targetKey)
+        })
+        legacyPendingRef.current.set(targetKey, legacyPending)
+        return legacyPending
+      }
+      const pending = requestAgentHealthProvider(environmentId, provider, requestLegacy)
+        .then((next) => {
+          if (mountedRef.current && targetKeyRef.current === targetKey) {
+            if (next) {
+              setSnapshots((current) => [
+                ...current.filter((snapshot) => snapshot.provider !== provider),
+                next
+              ])
+            }
+            setFailedProviders((states) => ({ ...states, [provider]: false }))
+          }
+          return next
+        })
+        .catch((error) => {
+          if (mountedRef.current && targetKeyRef.current === targetKey) {
+            setFailedProviders((states) => ({ ...states, [provider]: true }))
+          }
+          throw error
+        })
+        .finally(() => {
+          pendingRef.current.delete(pendingKey)
+          if (mountedRef.current && targetKeyRef.current === targetKey) {
+            setPendingProviders((states) => ({ ...states, [provider]: false }))
+          }
+        })
+      pendingRef.current.set(pendingKey, pending)
+      return pending
+    },
+    [enabled, environmentId, targetKey]
+  )
+
   const refresh = useCallback((): Promise<AgentHealthSnapshot[]> => {
     if (!enabled) {
       return Promise.resolve([])
     }
-    if (pendingRef.current?.key === targetKey) {
-      return pendingRef.current.promise
-    }
-    setIsProbing(true)
-    const pending = requestAgentHealth(environmentId)
-      .then((next) => {
-        if (mountedRef.current && targetKeyRef.current === targetKey) {
-          setSnapshots(next)
-          setLoadError(false)
+    return Promise.allSettled(AGENT_HEALTH_PROVIDERS.map((provider) => check(provider))).then(
+      (results) => {
+        const failure = results.find((result) => result.status === 'rejected')
+        if (failure?.status === 'rejected') {
+          throw failure.reason
         }
-        return next
-      })
-      .catch((error) => {
-        if (mountedRef.current && targetKeyRef.current === targetKey) {
-          setLoadError(true)
-        }
-        throw error
-      })
-      .finally(() => {
-        if (pendingRef.current?.promise === pending) {
-          pendingRef.current = null
-        }
-        if (mountedRef.current && targetKeyRef.current === targetKey) {
-          setIsProbing(false)
-        }
-      })
-    pendingRef.current = { key: targetKey, promise: pending }
-    return pending
-  }, [enabled, environmentId, targetKey])
+        return results.flatMap((result) =>
+          result.status === 'fulfilled' && result.value ? [result.value] : []
+        )
+      }
+    )
+  }, [check, enabled])
 
   const update = useCallback(
     (provider: AgentHealthProvider): Promise<AgentUpdateResult | null> => {
@@ -142,7 +206,7 @@ export function useAgentHealth(
               ...states,
               [provider]: { status: result.outcome, version: result.currentVersion }
             }))
-            void refresh().catch(() => {})
+            void check(provider).catch(() => {})
           }
           return result
         })
@@ -159,12 +223,13 @@ export function useAgentHealth(
       updatePendingRef.current.set(updateKey, pending)
       return pending
     },
-    [environmentId, refresh, targetKey]
+    [check, environmentId, targetKey]
   )
 
   useEffect(() => {
     setSnapshots([])
-    setLoadError(false)
+    setPendingProviders({})
+    setFailedProviders({})
     setUpdateStates({})
     if (!enabled) {
       return
@@ -174,5 +239,16 @@ export function useAgentHealth(
     return () => window.clearInterval(interval)
   }, [enabled, refresh])
 
-  return { snapshots, isProbing, loadError, updateStates, refresh, update }
+  const isProbing = AGENT_HEALTH_PROVIDERS.some((provider) => pendingProviders[provider] === true)
+  const loadError = AGENT_HEALTH_PROVIDERS.some((provider) => failedProviders[provider] === true)
+  return {
+    snapshots,
+    isProbing,
+    pendingProviders,
+    loadError,
+    updateStates,
+    refresh,
+    check,
+    update
+  }
 }

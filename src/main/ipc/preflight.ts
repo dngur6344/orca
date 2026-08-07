@@ -11,7 +11,7 @@ import { detectWslCommandsOnPath, type WslPreflightTarget } from './preflight-ws
 import { detectCommandsInInstallDirs } from './local-agent-install-dir-detection'
 import { getPreflightWslTarget, type PreflightRuntimeContext } from './preflight-runtime-target'
 import { hydrateShellPathForAgentDetection } from './agent-detection-shell-path'
-import { probeAgentHealth, updateAgent } from './agent-health-probe'
+import { probeAgentHealth, probeAgentProviderHealth, updateAgent } from './agent-health-probe'
 import type { AgentHealthProvider, AgentUpdateResult } from '../../shared/agent-health'
 import {
   execCommandInWsl,
@@ -303,6 +303,12 @@ export function registerPreflightHandlers(): void {
   ipcMain.handle('preflight:probeAgentHealth', async (_event, args?: PreflightRuntimeContext) => {
     return probeAgentHealth(args)
   })
+
+  ipcMain.handle(
+    'preflight:probeAgentHealthProvider',
+    async (_event, args: PreflightRuntimeContext & { provider: AgentHealthProvider }) =>
+      probeAgentProviderHealth(args.provider, args)
+  )
 
   ipcMain.handle(
     'preflight:updateAgent',

@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { parseCodexDoctorChecks, probeAgentHealth, updateAgent } from './agent-health-probe'
+import {
+  parseCodexDoctorChecks,
+  probeAgentHealth,
+  probeAgentProviderHealth,
+  updateAgent
+} from './agent-health-probe'
 
 describe('agent health probe', () => {
   it('keeps only connection-related Codex doctor checks', () => {
@@ -120,6 +125,23 @@ describe('agent health probe', () => {
     expect(
       runCommand.mock.calls.some(([provider, args]) => provider === 'codex' && args[0] === 'doctor')
     ).toBe(false)
+  })
+
+  it('probes only the selected provider', async () => {
+    const runCommand = vi.fn(async (_provider: 'claude' | 'codex', args: string[]) => {
+      if (args[0] === '--version') {
+        return { stdout: 'codex-cli 0.146.1', stderr: '' }
+      }
+      if (args[0] === 'doctor') {
+        return { stdout: JSON.stringify({ checks: [] }), stderr: '' }
+      }
+      return { stdout: 'Update Codex', stderr: '' }
+    })
+
+    await expect(
+      probeAgentProviderHealth('codex', undefined, { runCommand })
+    ).resolves.toMatchObject({ provider: 'codex', version: '0.146.1' })
+    expect(runCommand.mock.calls.every(([provider]) => provider === 'codex')).toBe(true)
   })
 
   it('runs the provider updater and reports the installed version change', async () => {

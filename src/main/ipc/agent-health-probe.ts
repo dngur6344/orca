@@ -261,14 +261,22 @@ export function probeAgentHealth(
   context?: PreflightRuntimeContext,
   dependencies: AgentCommandDependencies = {}
 ): Promise<AgentHealthSnapshot[]> {
+  return Promise.all(
+    (['claude', 'codex'] as const).map((provider) =>
+      probeAgentProviderHealth(provider, context, dependencies)
+    )
+  )
+}
+
+export function probeAgentProviderHealth(
+  provider: AgentHealthProvider,
+  context?: PreflightRuntimeContext,
+  dependencies: AgentCommandDependencies = {}
+): Promise<AgentHealthSnapshot> {
   const runCommand = dependencies.runCommand ?? runAgentCommand
   const now = dependencies.now ?? Date.now
   const resolveClaudeVersion = dependencies.resolveClaudeVersion ?? resolveClaudeLatestVersion
-  return Promise.all(
-    (['claude', 'codex'] as const).map((provider) =>
-      probeProvider(provider, context, runCommand, resolveClaudeVersion, now)
-    )
-  )
+  return probeProvider(provider, context, runCommand, resolveClaudeVersion, now)
 }
 
 export async function updateAgent(

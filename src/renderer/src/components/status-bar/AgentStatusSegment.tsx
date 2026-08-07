@@ -139,9 +139,11 @@ export function AgentStatusSegment({
   const {
     snapshots: healthSnapshots,
     isProbing: healthPending,
+    pendingProviders: healthPendingProviders,
     loadError: healthLoadError,
     updateStates,
     refresh: refreshAgentHealth,
+    check: checkAgentHealth,
     update: updateAgent
   } = useAgentHealth(activeRuntimeEnvironmentId, detectionTargetReady)
   const [snapshot, setSnapshot] = useState<ProviderAccountsSnapshot | null>(null)
@@ -214,7 +216,11 @@ export function AgentStatusSegment({
       'System default'
     )
   }).filter(shouldShowAgentReadiness)
-  const measuredOverall = getOverallAgentConnectionState(providers, healthSnapshots, healthPending)
+  const measuredOverall = getOverallAgentConnectionState(
+    providers,
+    healthSnapshots,
+    healthPendingProviders
+  )
   const loadError =
     accountLoadError || detectionLoadError || detectedAgents.detectionFailed || healthLoadError
   const overall =
@@ -308,7 +314,7 @@ export function AgentStatusSegment({
         <AgentStatusPanel
           providers={providers}
           healthSnapshots={healthSnapshots}
-          healthPending={healthPending}
+          healthPendingProviders={healthPendingProviders}
           updateStates={updateStates}
           mode={statusBarUsageMode}
           ownerLabel={ownerLabel}
@@ -316,6 +322,7 @@ export function AgentStatusSegment({
           loadError={loadError}
           onModeChange={setStatusBarUsageMode}
           onRefresh={() => void refresh()}
+          onCheckAgent={(provider) => void checkAgentHealth(provider)}
           onUpdateAgent={(provider) => void updateAgent(provider)}
           onManageAccounts={() => {
             openSettingsTarget({ pane: 'accounts', repoId: null })

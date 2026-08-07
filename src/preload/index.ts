@@ -2188,6 +2188,10 @@ const api = {
       ipcRenderer.invoke('preflight:refreshAgents', args),
     probeAgentHealth: (args?: PreflightRuntimeContext): Promise<AgentHealthSnapshot[]> =>
       ipcRenderer.invoke('preflight:probeAgentHealth', args),
+    probeAgentHealthProvider: (
+      args: PreflightRuntimeContext & { provider: AgentHealthProvider }
+    ): Promise<AgentHealthSnapshot> =>
+      ipcRenderer.invoke('preflight:probeAgentHealthProvider', args),
     updateAgent: (
       args: PreflightRuntimeContext & { provider: AgentHealthProvider }
     ): Promise<AgentUpdateResult> => ipcRenderer.invoke('preflight:updateAgent', args),

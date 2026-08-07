@@ -3599,9 +3599,10 @@
             "updateFailed": "Update failed",
             "updateAvailable": "v{{value0}} available",
             "checkForUpdates": "Update status unavailable",
+            "checkingForUpdates": "Checking for updates…",
+            "checkNow": "Check",
             "retryUpdate": "Retry",
-            "updateNow": "Update",
-            "checkAndUpdate": "Check & update"
+            "updateNow": "Update"
           },
           "AgentStatusPanel": {
             "ready": "Ready",

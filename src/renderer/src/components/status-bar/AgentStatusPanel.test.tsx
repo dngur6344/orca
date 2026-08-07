@@ -81,7 +81,7 @@ function renderPanel(mode: 'verbose' | 'compact'): string {
     <AgentStatusPanel
       providers={providers}
       healthSnapshots={healthSnapshots}
-      healthPending={false}
+      healthPendingProviders={{}}
       updateStates={{}}
       mode={mode}
       ownerLabel="This device"
@@ -89,6 +89,7 @@ function renderPanel(mode: 'verbose' | 'compact'): string {
       loadError={false}
       onModeChange={() => {}}
       onRefresh={() => {}}
+      onCheckAgent={() => {}}
       onUpdateAgent={() => {}}
       onManageAccounts={() => {}}
     />
@@ -105,7 +106,8 @@ describe('AgentStatusPanel', () => {
     expect(markup).toContain('v1.0.61')
     expect(markup).not.toContain('42 ms')
     expect(markup).toContain('Update status unavailable')
-    expect(markup).toContain('Check &amp; update')
+    expect(markup).toContain('Check')
+    expect(markup).not.toContain('Check &amp; update')
     expect(markup).toContain('CLI: Passed')
     expect(markup).toContain('active@claude.test')
     expect(markup).toContain('inactive@claude.test')

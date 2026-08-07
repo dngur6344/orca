@@ -53,13 +53,13 @@ export function getProviderConnectionState(
 export function getOverallAgentConnectionState(
   providers: readonly AgentProviderReadiness[],
   snapshots: readonly AgentHealthSnapshot[],
-  healthPending: boolean
+  pendingProviders: Partial<Record<AgentReadinessProvider, boolean>>
 ): AgentReadinessState {
   return providers.reduce<AgentReadinessState>((current, provider) => {
     const state = getProviderConnectionState(
       provider,
       getAgentHealthSnapshot(snapshots, provider.provider),
-      healthPending
+      pendingProviders[provider.provider] === true
     )
     return STATE_PRIORITY[state] > STATE_PRIORITY[current] ? state : current
   }, 'ready')

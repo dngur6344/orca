@@ -7,7 +7,11 @@ import {
   refreshShellPathAndDetectAgents,
   runPreflightCheck
 } from '../../../ipc/preflight'
-import { probeAgentHealth, updateAgent } from '../../../ipc/agent-health-probe'
+import {
+  probeAgentHealth,
+  probeAgentProviderHealth,
+  updateAgent
+} from '../../../ipc/agent-health-probe'
 
 const PreflightCheck = z.object({
   force: z.boolean().optional()
@@ -52,6 +56,11 @@ export const PREFLIGHT_METHODS: RpcMethod[] = [
     name: 'preflight.probeAgentHealth',
     params: null,
     handler: async () => probeAgentHealth()
+  }),
+  defineMethod({
+    name: 'preflight.probeAgentHealthProvider',
+    params: PreflightUpdateAgent,
+    handler: async (params) => probeAgentProviderHealth(params.provider)
   }),
   defineMethod({
     name: 'preflight.updateAgent',

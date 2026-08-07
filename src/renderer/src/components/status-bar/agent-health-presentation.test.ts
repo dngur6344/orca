@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentHealthSnapshot } from '../../../../shared/agent-health'
 import type { AgentProviderReadiness } from './agent-readiness'
-import { getProviderConnectionState } from './agent-health-presentation'
+import {
+  getOverallAgentConnectionState,
+  getProviderConnectionState
+} from './agent-health-presentation'
 
 const readyProvider: AgentProviderReadiness = {
   provider: 'codex',
@@ -65,5 +68,20 @@ describe('agent health presentation', () => {
 
   it('keeps readiness status when an older runtime has no health probe', () => {
     expect(getProviderConnectionState(readyProvider, null, false)).toBe('ready')
+  })
+
+  it('keeps a completed provider ready while another provider is pending', () => {
+    const claudeProvider: AgentProviderReadiness = {
+      ...readyProvider,
+      provider: 'claude'
+    }
+
+    expect(
+      getOverallAgentConnectionState([readyProvider, claudeProvider], [snapshot()], {
+        claude: true,
+        codex: false
+      })
+    ).toBe('checking')
+    expect(getProviderConnectionState(readyProvider, snapshot(), false)).toBe('ready')
   })
 })

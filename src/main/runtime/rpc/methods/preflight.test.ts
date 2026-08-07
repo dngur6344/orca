@@ -10,6 +10,7 @@ const {
   detectRemoteWindowsTerminalCapabilitiesMock,
   refreshShellPathAndDetectAgentsMock,
   probeAgentHealthMock,
+  probeAgentProviderHealthMock,
   updateAgentMock,
   runPreflightCheckMock
 } = vi.hoisted(() => ({
@@ -18,6 +19,7 @@ const {
   detectRemoteWindowsTerminalCapabilitiesMock: vi.fn(),
   refreshShellPathAndDetectAgentsMock: vi.fn(),
   probeAgentHealthMock: vi.fn(),
+  probeAgentProviderHealthMock: vi.fn(),
   updateAgentMock: vi.fn(),
   runPreflightCheckMock: vi.fn()
 }))
@@ -32,6 +34,7 @@ vi.mock('../../../ipc/preflight', () => ({
 
 vi.mock('../../../ipc/agent-health-probe', () => ({
   probeAgentHealth: probeAgentHealthMock,
+  probeAgentProviderHealth: probeAgentProviderHealthMock,
   updateAgent: updateAgentMock
 }))
 
@@ -120,6 +123,28 @@ describe('preflight RPC methods', () => {
 
     expect(updateAgentMock).toHaveBeenCalledWith('codex')
     expect(response).toMatchObject({ ok: true, result })
+  })
+
+  it('probes one agent independently through runtime RPC', async () => {
+    const snapshot = {
+      provider: 'claude',
+      cliStatus: 'available',
+      health: 'healthy',
+      version: '1.0.61',
+      durationMs: 80,
+      checkedAt: 1000,
+      checks: [{ id: 'cli', status: 'ok' }]
+    }
+    probeAgentProviderHealthMock.mockResolvedValueOnce(snapshot)
+    const runtime = { getRuntimeId: () => 'test-runtime' } as unknown as OrcaRuntimeService
+    const dispatcher = new RpcDispatcher({ runtime, methods: PREFLIGHT_METHODS })
+
+    const response = await dispatcher.dispatch(
+      makeRequest('preflight.probeAgentHealthProvider', { provider: 'claude' })
+    )
+
+    expect(probeAgentProviderHealthMock).toHaveBeenCalledWith('claude')
+    expect(response).toMatchObject({ ok: true, result: snapshot })
   })
 
   it('detects agents on remote SSH connections through runtime RPC', async () => {

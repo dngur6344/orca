@@ -160,18 +160,21 @@ function ProviderReadinessRows({
   provider,
   mode,
   healthSnapshots,
-  healthPending,
+  healthPendingProviders,
   updateStates,
+  onCheckAgent,
   onUpdateAgent
 }: {
   provider: AgentProviderReadiness
   mode: StatusBarUsageMode
   healthSnapshots: readonly AgentHealthSnapshot[]
-  healthPending: boolean
+  healthPendingProviders: Partial<Record<AgentHealthProvider, boolean>>
   updateStates: Partial<Record<AgentHealthProvider, AgentUpdateUiState>>
+  onCheckAgent: (provider: AgentHealthProvider) => void
   onUpdateAgent: (provider: AgentHealthProvider) => void
 }): React.JSX.Element {
   const healthSnapshot = getAgentHealthSnapshot(healthSnapshots, provider.provider)
+  const healthPending = healthPendingProviders[provider.provider] === true
   const connectionState = getProviderConnectionState(provider, healthSnapshot, healthPending)
   const accounts =
     mode === 'compact'
@@ -201,6 +204,7 @@ function ProviderReadinessRows({
         pending={healthPending}
         mode={mode}
         updateState={updateStates[provider.provider]}
+        onCheck={onCheckAgent}
         onUpdate={onUpdateAgent}
       />
       <div className="pb-2">
@@ -246,7 +250,7 @@ function ProviderReadinessRows({
 export function AgentStatusPanel({
   providers,
   healthSnapshots,
-  healthPending,
+  healthPendingProviders,
   updateStates,
   mode,
   ownerLabel,
@@ -254,12 +258,13 @@ export function AgentStatusPanel({
   loadError,
   onModeChange,
   onRefresh,
+  onCheckAgent,
   onUpdateAgent,
   onManageAccounts
 }: {
   providers: AgentProviderReadiness[]
   healthSnapshots: readonly AgentHealthSnapshot[]
-  healthPending: boolean
+  healthPendingProviders: Partial<Record<AgentHealthProvider, boolean>>
   updateStates: Partial<Record<AgentHealthProvider, AgentUpdateUiState>>
   mode: StatusBarUsageMode
   ownerLabel: string
@@ -267,6 +272,7 @@ export function AgentStatusPanel({
   loadError: boolean
   onModeChange: (mode: StatusBarUsageMode) => void
   onRefresh: () => void
+  onCheckAgent: (provider: AgentHealthProvider) => void
   onUpdateAgent: (provider: AgentHealthProvider) => void
   onManageAccounts: () => void
 }): React.JSX.Element {
@@ -336,8 +342,9 @@ export function AgentStatusPanel({
             provider={provider}
             mode={mode}
             healthSnapshots={healthSnapshots}
-            healthPending={healthPending}
+            healthPendingProviders={healthPendingProviders}
             updateStates={updateStates}
+            onCheckAgent={onCheckAgent}
             onUpdateAgent={onUpdateAgent}
           />
         ))}

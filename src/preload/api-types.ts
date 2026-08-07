@@ -749,6 +749,9 @@ export type PreflightApi = {
   detectAgents: (args?: PreflightRuntimeContext) => Promise<string[]>
   refreshAgents: (args?: PreflightRuntimeContext) => Promise<RefreshAgentsResult>
   probeAgentHealth: (args?: PreflightRuntimeContext) => Promise<AgentHealthSnapshot[]>
+  probeAgentHealthProvider: (
+    args: PreflightRuntimeContext & { provider: AgentHealthProvider }
+  ) => Promise<AgentHealthSnapshot>
   updateAgent: (
     args: PreflightRuntimeContext & { provider: AgentHealthProvider }
   ) => Promise<AgentUpdateResult>

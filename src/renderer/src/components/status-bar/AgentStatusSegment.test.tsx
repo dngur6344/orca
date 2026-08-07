@@ -55,9 +55,11 @@ vi.mock('./use-agent-health', () => ({
   useAgentHealth: () => ({
     snapshots: [],
     isProbing: false,
+    pendingProviders: {},
     loadError: false,
     updateStates: {},
     refresh: mocks.refreshAgentHealth,
+    check: vi.fn(),
     update: mocks.updateAgent
   })
 }))
