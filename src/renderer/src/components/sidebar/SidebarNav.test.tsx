@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   state: {} as Record<string, unknown>,
   openTaskPage: vi.fn(),
   openAutomationsPage: vi.fn(),
+  openRunsPage: vi.fn(),
   openActivityPage: vi.fn(),
   openMobilePage: vi.fn(),
   openModal: vi.fn(),
@@ -129,6 +130,7 @@ function setSidebarState({
     activeView: 'worktrees',
     openTaskPage: mocks.openTaskPage,
     openAutomationsPage: mocks.openAutomationsPage,
+    openRunsPage: mocks.openRunsPage,
     openActivityPage: mocks.openActivityPage,
     openMobilePage: mocks.openMobilePage,
     openModal: mocks.openModal,
@@ -210,6 +212,7 @@ describe('SidebarNav', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks()
+    localStorage.clear()
     await i18n.changeLanguage('en')
     mocks.hasPairedMobileDevice = false
     mocks.agentBucketCounts = { attention: 0, working: 0, done: 0, idle: 0 }
@@ -218,6 +221,18 @@ describe('SidebarNav', () => {
 
   it('hides the Agents entry while settings are loading', () => {
     expect(shouldShowAgentsButton(null)).toBe(false)
+  })
+
+  it('shows Runs only after orchestration setup is enabled', async () => {
+    const beforeSetup = await renderSidebarNav()
+    expect(queryButtonByText(beforeSetup, 'Runs')).toBeNull()
+
+    localStorage.setItem('orca.orchestration.enabled', '1')
+    window.dispatchEvent(new CustomEvent('orca:orchestration-setup-state'))
+    await waitFor(() => expect(queryButtonByText(beforeSetup, 'Runs')).not.toBeNull())
+    await clickButton(getButtonByText(beforeSetup, 'Runs'))
+
+    expect(mocks.openRunsPage).toHaveBeenCalledTimes(1)
   })
 
   it('hides the Agents entry while the experimental Agents view is off', () => {

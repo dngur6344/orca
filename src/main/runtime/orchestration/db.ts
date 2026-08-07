@@ -29,6 +29,8 @@ import type {
   QuestionStatus,
   MutationReceiptRow,
   MutationState,
+  OperatorActionRow,
+  OperatorActionState,
   WorkerDispatchRow,
   WorkerDispatchState,
   LegacyWorkerTerminalRecoveryRow,
@@ -103,6 +105,8 @@ export type {
   QuestionStatus,
   MutationReceiptRow,
   MutationState,
+  OperatorActionRow,
+  OperatorActionState,
   WorkerDispatchRow,
   WorkerDispatchState
 }
@@ -259,10 +263,30 @@ export const CURRENT_CONTRACT_VERSION = ORCHESTRATION_CONTRACT_VERSION
 
 const MUTATION_RECEIPT_MAX_ROWS = 10_000
 const MUTATION_RECEIPT_MAX_AGE_DAYS = 30
+const OPERATOR_ACTION_MAX_ROWS = 10_000
+const OPERATOR_ACTION_MAX_AGE_DAYS = 30
 
 export type RunListPage = {
   runs: RunRow[]
   nextCursor: string | null
+}
+
+export type RunConsoleQuestionRow = QuestionRow & {
+  task_id: string | null
+  prompt: string | null
+  question_payload: string | null
+}
+
+export type RunConsoleSummaryCountRow = {
+  run_id: string
+  tasks: number
+  terminal_tasks: number
+  active_tasks: number
+  pending_questions: number
+  pending_gates: number
+  failed_tasks: number
+  circuit_broken_dispatches: number
+  resource_decisions: number
 }
 
 export type TaskRuntimeLineageRow = TaskRow & {
@@ -277,8 +301,8 @@ type RunListCursor = {
   id: string
 }
 
-// Schema versions: v2 'heartbeat'+last_heartbeat_at, v3 delivered_at, v4 task-creator terminal, v5 task_title/display_name, v6 pane identity, v7 lightweight Runs, v8 crash-safe Run deliveries, v9 durable question threads, v10 Dispatch capabilities, v11 durable mutation receipts, v12 composed worker state, v18 post-v6 version-skew repair, v19 adopted legacy Runs and compatibility receipts, v20 legacy question backfill, v21 legacy scheduler-loss provenance, v22 dispatch assignee lookup, v23 worker terminal resource ownership, v24 creator-incarnation authority, v25 active Dispatch handle lookup.
-const SCHEMA_VERSION = 25
+// Schema versions: v2 'heartbeat'+last_heartbeat_at, v3 delivered_at, v4 task-creator terminal, v5 task_title/display_name, v6 pane identity, v7 lightweight Runs, v8 crash-safe Run deliveries, v9 durable question threads, v10 Dispatch capabilities, v11 durable mutation receipts, v12 composed worker state, v18 post-v6 version-skew repair, v19 adopted legacy Runs and compatibility receipts, v20 legacy question backfill, v21 legacy scheduler-loss provenance, v22 dispatch assignee lookup, v23 worker terminal resource ownership, v24 creator-incarnation authority, v25 active Dispatch handle lookup, v26 operator action audit.
+const SCHEMA_VERSION = 26
 
 function hardenOrchestrationDatabaseFiles(dbPath: string | ':memory:'): void {
   if (dbPath === ':memory:' || process.platform === 'win32') {
@@ -384,6 +408,26 @@ export class OrchestrationDb {
         updated_at          TEXT NOT NULL DEFAULT (datetime('now')),
         PRIMARY KEY (caller_fingerprint, request_id)
       );
+
+      CREATE TABLE IF NOT EXISTS orchestration_operator_actions (
+        id                  TEXT PRIMARY KEY,
+        request_id          TEXT NOT NULL,
+        actor_fingerprint   TEXT NOT NULL,
+        run_id              TEXT NOT NULL,
+        task_id             TEXT,
+        dispatch_id         TEXT,
+        action              TEXT NOT NULL,
+        state               TEXT NOT NULL DEFAULT 'attempted'
+          CHECK(state IN ('attempted', 'completed', 'failed', 'outcome_unknown')),
+        error_code          TEXT,
+        replay_count        INTEGER NOT NULL DEFAULT 0,
+        created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at          TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE (actor_fingerprint, request_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_operator_actions_run_created
+        ON orchestration_operator_actions(run_id, created_at DESC, id DESC);
 
       CREATE TABLE IF NOT EXISTS worker_dispatches (
         dispatch_id            TEXT PRIMARY KEY,
@@ -979,6 +1023,28 @@ export class OrchestrationDb {
             WHERE assignee_handle IS NOT NULL AND status IN ('pending', 'dispatched');
         `)
       }
+      if (current < 26) {
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS orchestration_operator_actions (
+            id                  TEXT PRIMARY KEY,
+            request_id          TEXT NOT NULL,
+            actor_fingerprint   TEXT NOT NULL,
+            run_id              TEXT NOT NULL,
+            task_id             TEXT,
+            dispatch_id         TEXT,
+            action              TEXT NOT NULL,
+            state               TEXT NOT NULL DEFAULT 'attempted'
+              CHECK(state IN ('attempted', 'completed', 'failed', 'outcome_unknown')),
+            error_code          TEXT,
+            replay_count        INTEGER NOT NULL DEFAULT 0,
+            created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at          TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (actor_fingerprint, request_id)
+          );
+          CREATE INDEX IF NOT EXISTS idx_operator_actions_run_created
+            ON orchestration_operator_actions(run_id, created_at DESC, id DESC);
+        `)
+      }
       this.db.exec(`
         CREATE INDEX IF NOT EXISTS idx_dispatch_assignee_pane_leaf
           ON dispatch_contexts(${DISPATCH_PANE_KEY_MATCH_SUFFIX_SQL})
@@ -1518,6 +1584,154 @@ export class OrchestrationDb {
          WHERE caller_fingerprint = ? AND request_id = ?`
       )
       .get(callerFingerprint, requestId) as MutationReceiptRow | undefined
+  }
+
+  private ensureOperatorActionCapacity(): void {
+    this.db
+      .prepare(
+        `DELETE FROM orchestration_operator_actions
+          WHERE state != 'attempted' AND updated_at < datetime('now', ?)`
+      )
+      .run(`-${OPERATOR_ACTION_MAX_AGE_DAYS} days`)
+    const row = this.db
+      .prepare('SELECT COUNT(*) AS count FROM orchestration_operator_actions')
+      .get() as { count: number }
+    const terminalToRemove = row.count - OPERATOR_ACTION_MAX_ROWS + 1
+    if (terminalToRemove > 0) {
+      this.db
+        .prepare(
+          `DELETE FROM orchestration_operator_actions
+            WHERE rowid IN (
+              SELECT rowid FROM orchestration_operator_actions
+               WHERE state != 'attempted'
+               ORDER BY updated_at ASC, rowid ASC
+               LIMIT ?
+            )`
+        )
+        .run(terminalToRemove)
+    }
+    const retained = this.db
+      .prepare('SELECT COUNT(*) AS count FROM orchestration_operator_actions')
+      .get() as { count: number }
+    if (retained.count >= OPERATOR_ACTION_MAX_ROWS) {
+      throw new OrchestrationError(
+        'operator_audit_full',
+        'The operator audit ledger is full of unresolved actions. Inspect them before starting another operator mutation.'
+      )
+    }
+  }
+
+  beginOperatorAction(params: {
+    requestId: string
+    actorFingerprint: string
+    runId: string
+    taskId?: string | null
+    dispatchId?: string | null
+    action: string
+  }): OperatorActionRow {
+    this.db.exec('BEGIN IMMEDIATE')
+    try {
+      const existing = this.getOperatorAction(params.actorFingerprint, params.requestId)
+      if (existing) {
+        if (
+          existing.run_id !== params.runId ||
+          existing.task_id !== (params.taskId ?? null) ||
+          existing.dispatch_id !== (params.dispatchId ?? null) ||
+          existing.action !== params.action
+        ) {
+          throw new OrchestrationError(
+            'request_mismatch',
+            `Operator action ${params.requestId} was already used for a different target.`
+          )
+        }
+        this.db
+          .prepare(
+            `UPDATE orchestration_operator_actions
+                SET state = 'attempted', error_code = NULL,
+                    replay_count = replay_count + 1, updated_at = datetime('now')
+              WHERE actor_fingerprint = ? AND request_id = ?`
+          )
+          .run(params.actorFingerprint, params.requestId)
+        const retried = this.getOperatorAction(params.actorFingerprint, params.requestId)
+        this.db.exec('COMMIT')
+        return retried as OperatorActionRow
+      }
+      this.ensureOperatorActionCapacity()
+      this.db
+        .prepare(
+          `INSERT INTO orchestration_operator_actions (
+             id, request_id, actor_fingerprint, run_id, task_id, dispatch_id, action
+           ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+        )
+        .run(
+          generateId('op'),
+          params.requestId,
+          params.actorFingerprint,
+          params.runId,
+          params.taskId ?? null,
+          params.dispatchId ?? null,
+          params.action
+        )
+      const row = this.getOperatorAction(params.actorFingerprint, params.requestId)
+      this.db.exec('COMMIT')
+      return row as OperatorActionRow
+    } catch (error) {
+      this.db.exec('ROLLBACK')
+      throw error
+    }
+  }
+
+  settleOperatorAction(params: {
+    actorFingerprint: string
+    requestId: string
+    state: Exclude<OperatorActionState, 'attempted'>
+    errorCode?: string | null
+  }): OperatorActionRow {
+    const result = this.db
+      .prepare(
+        `UPDATE orchestration_operator_actions
+            SET state = ?, error_code = ?, updated_at = datetime('now')
+          WHERE actor_fingerprint = ? AND request_id = ? AND state = 'attempted'`
+      )
+      .run(params.state, params.errorCode ?? null, params.actorFingerprint, params.requestId)
+    const row = this.getOperatorAction(params.actorFingerprint, params.requestId)
+    if (result.changes !== 1 || !row) {
+      throw new OrchestrationError(
+        'request_mismatch',
+        `Operator action ${params.requestId} no longer matches its attempted operation.`
+      )
+    }
+    return row
+  }
+
+  markOperatorActionReplayed(actorFingerprint: string, requestId: string): void {
+    this.db
+      .prepare(
+        `UPDATE orchestration_operator_actions
+            SET replay_count = replay_count + 1, updated_at = datetime('now')
+          WHERE actor_fingerprint = ? AND request_id = ? AND state != 'attempted'`
+      )
+      .run(actorFingerprint, requestId)
+  }
+
+  getOperatorAction(actorFingerprint: string, requestId: string): OperatorActionRow | undefined {
+    return this.db
+      .prepare(
+        `SELECT * FROM orchestration_operator_actions
+          WHERE actor_fingerprint = ? AND request_id = ?`
+      )
+      .get(actorFingerprint, requestId) as OperatorActionRow | undefined
+  }
+
+  listRunConsoleOperatorActions(runId: string, limit: number): OperatorActionRow[] {
+    return this.db
+      .prepare(
+        `SELECT * FROM orchestration_operator_actions
+          WHERE run_id = ?
+          ORDER BY created_at DESC, id DESC
+          LIMIT ?`
+      )
+      .all(runId, limit) as OperatorActionRow[]
   }
 
   // ── Legacy adoption and compatibility principals ──
@@ -2443,6 +2657,37 @@ export class OrchestrationDb {
       runs: pageRows.map(exposeRunTimestamps),
       nextCursor: hasMore ? encodeRunListCursor(pageRows.at(-1) as RunRow) : null
     }
+  }
+
+  getRunConsoleSummaryCounts(runIds: readonly string[]): RunConsoleSummaryCountRow[] {
+    if (runIds.length === 0) {
+      return []
+    }
+    const placeholders = runIds.map(() => '?').join(',')
+    return this.db
+      .prepare(
+        `SELECT r.id AS run_id,
+                (SELECT COUNT(*) FROM tasks t WHERE t.run_id = r.id) AS tasks,
+                (SELECT COUNT(*) FROM tasks t
+                  WHERE t.run_id = r.id AND t.status IN ('completed', 'failed')) AS terminal_tasks,
+                (SELECT COUNT(*) FROM tasks t
+                  WHERE t.run_id = r.id AND t.status NOT IN ('completed', 'failed')) AS active_tasks,
+                (SELECT COUNT(*) FROM question_threads q
+                  WHERE q.run_id = r.id AND q.status = 'pending') AS pending_questions,
+                (SELECT COUNT(*) FROM decision_gates g
+                  WHERE g.run_id = r.id AND g.status = 'pending') AS pending_gates,
+                (SELECT COUNT(*) FROM tasks t
+                  WHERE t.run_id = r.id AND t.status = 'failed') AS failed_tasks,
+                (SELECT COUNT(*) FROM dispatch_contexts d
+                  WHERE d.run_id = r.id AND d.status = 'circuit_broken') AS circuit_broken_dispatches,
+                (SELECT COUNT(*) FROM worker_terminal_resources wtr
+                  JOIN dispatch_contexts d ON d.id = wtr.owner_dispatch_id
+                  WHERE d.run_id = r.id AND wtr.ownership_state = 'owned'
+                    AND wtr.release_state IN ('not_requested', 'unknown')) AS resource_decisions
+           FROM runs r
+          WHERE r.id IN (${placeholders})`
+      )
+      .all(...runIds) as RunConsoleSummaryCountRow[]
   }
 
   getCurrentRunForPane(paneKey: string): RunRow | undefined {
@@ -3677,6 +3922,34 @@ export class OrchestrationDb {
     return question ? exposeQuestionTimestamps(question) : undefined
   }
 
+  listRunConsoleQuestions(runId: string, limit: number): RunConsoleQuestionRow[] {
+    const rows = this.db
+      .prepare(
+        `SELECT q.*, d.task_id, m.body AS prompt, m.payload AS question_payload
+           FROM question_threads q
+           LEFT JOIN dispatch_contexts d ON d.id = q.dispatch_id
+           LEFT JOIN messages m ON m.id = q.message_id
+          WHERE q.run_id = ?
+          ORDER BY q.created_at DESC, q.message_id DESC
+          LIMIT ?`
+      )
+      .all(runId, limit) as RunConsoleQuestionRow[]
+    return rows.map((row) => ({
+      ...exposeQuestionTimestamps(row),
+      task_id: row.task_id,
+      prompt: row.prompt,
+      question_payload: row.question_payload
+    }))
+  }
+
+  listRunConsoleMessages(runId: string, limit: number): MessageRow[] {
+    return exposeMessageListTimestamps(
+      this.db
+        .prepare('SELECT * FROM messages WHERE run_id = ? ORDER BY sequence DESC, id DESC LIMIT ?')
+        .all(runId, limit) as MessageRow[]
+    )
+  }
+
   private getQuestionRaw(messageId: string): QuestionRow | undefined {
     return this.db.prepare('SELECT * FROM question_threads WHERE message_id = ?').get(messageId) as
       | QuestionRow
@@ -3689,9 +3962,26 @@ export class OrchestrationDb {
     consumerGeneration: number
     body: string
   }): { question: QuestionRow; message: MessageRow; duplicate: boolean } {
+    return this.answerQuestionWithAuthority(params, params.consumerGeneration)
+  }
+
+  answerQuestionAsOperator(params: { messageId: string; runId: string; body: string }): {
+    question: QuestionRow
+    message: MessageRow
+    duplicate: boolean
+  } {
+    return this.answerQuestionWithAuthority(params, null)
+  }
+
+  private answerQuestionWithAuthority(
+    params: { messageId: string; runId: string; body: string },
+    consumerGeneration: number | null
+  ): { question: QuestionRow; message: MessageRow; duplicate: boolean } {
     this.db.exec('BEGIN IMMEDIATE')
     try {
-      this.requireCurrentConsumer(params.runId, params.consumerGeneration)
+      if (consumerGeneration !== null) {
+        this.requireCurrentConsumer(params.runId, consumerGeneration)
+      }
       const question = this.getQuestionRaw(params.messageId)
       if (!question || question.run_id !== params.runId) {
         throw new OrchestrationError(
@@ -3737,7 +4027,7 @@ export class OrchestrationDb {
                answered_by_generation = ?, answered_at = datetime('now')
            WHERE message_id = ? AND status = 'pending'`
         )
-        .run(message.id, params.body, params.consumerGeneration, question.message_id)
+        .run(message.id, params.body, consumerGeneration, question.message_id)
       const answered = this.getQuestionRaw(question.message_id) as QuestionRow
       const storedMessage = this.getMessageById(message.id) as MessageRow
       this.db.exec('COMMIT')
@@ -3879,6 +4169,12 @@ export class OrchestrationDb {
         .all(filter.runId) as TaskRow[]
     }
     return this.db.prepare('SELECT * FROM tasks ORDER BY created_at').all() as TaskRow[]
+  }
+
+  listRunConsoleTasks(runId: string, limit: number): TaskRow[] {
+    return this.db
+      .prepare('SELECT * FROM tasks WHERE run_id = ? ORDER BY created_at, id LIMIT ?')
+      .all(runId, limit) as TaskRow[]
   }
 
   // Why: LEFT JOIN keeps non-dispatched tasks (NULL assignee); the MAX(rowid) subquery matches getDispatchContext's most-recent-active-dispatch semantics.
@@ -6097,7 +6393,7 @@ export class OrchestrationDb {
       .all() as WorkerTerminalResourceRow[]
   }
 
-  listWorkerTerminalResources(params: { runId?: string } = {}): {
+  listWorkerTerminalResources(params: { runId?: string; limit?: number } = {}): {
     dispatchId: string
     taskId: string
     runId: string
@@ -6107,6 +6403,10 @@ export class OrchestrationDb {
     terminalState: WorkerTerminalListState | null
     resource: WorkerTerminalResourceRow | null
   }[] {
+    const rowParams: Database.BindValue[] = params.runId ? [params.runId] : []
+    if (params.limit !== undefined) {
+      rowParams.push(params.limit)
+    }
     const rows = this.db
       .prepare(
         `SELECT w.dispatch_id, w.state AS worker_state, w.agent_terminal_handle,
@@ -6114,9 +6414,10 @@ export class OrchestrationDb {
            FROM worker_dispatches w
            JOIN dispatch_contexts d ON d.id = w.dispatch_id
           ${params.runId ? 'WHERE d.run_id = ?' : ''}
-          ORDER BY w.created_at ASC`
+          ORDER BY w.created_at ASC
+          ${params.limit !== undefined ? 'LIMIT ?' : ''}`
       )
-      .all(...(params.runId ? [params.runId] : [])) as {
+      .all(...rowParams) as {
       dispatch_id: string
       worker_state: WorkerDispatchState
       agent_terminal_handle: string | null
@@ -6124,13 +6425,16 @@ export class OrchestrationDb {
       run_id: string
       dispatch_status: DispatchStatus
     }[]
-    const resources = this.db
-      .prepare(
-        `SELECT r.* FROM worker_terminal_resources r
-           JOIN dispatch_contexts d ON d.id = r.owner_dispatch_id
-          ${params.runId ? 'WHERE d.run_id = ?' : ''}`
-      )
-      .all(...(params.runId ? [params.runId] : [])) as WorkerTerminalResourceRow[]
+    const ownerIds = rows.map((row) => row.dispatch_id)
+    const resources =
+      ownerIds.length === 0
+        ? []
+        : (this.db
+            .prepare(
+              `SELECT * FROM worker_terminal_resources
+                WHERE owner_dispatch_id IN (${ownerIds.map(() => '?').join(',')})`
+            )
+            .all(...ownerIds) as WorkerTerminalResourceRow[])
     const resourceByOwner = new Map(
       resources.map((resource) => [resource.owner_dispatch_id, resource])
     )
@@ -6223,6 +6527,17 @@ export class OrchestrationDb {
     return this.db.prepare('SELECT * FROM dispatch_contexts WHERE id = ?').get(dispatchId) as
       | DispatchContextRow
       | undefined
+  }
+
+  listRunConsoleDispatches(runId: string, limit: number): DispatchContextRow[] {
+    return this.db
+      .prepare(
+        `SELECT * FROM dispatch_contexts
+          WHERE run_id = ?
+          ORDER BY created_at DESC, id DESC
+          LIMIT ?`
+      )
+      .all(runId, limit) as DispatchContextRow[]
   }
 
   commitDispatchLaunchTokenHash(dispatchId: string, launchTokenHash: string): DispatchContextRow {
@@ -6658,6 +6973,17 @@ export class OrchestrationDb {
     return this.db
       .prepare('SELECT * FROM decision_gates ORDER BY created_at')
       .all() as DecisionGateRow[]
+  }
+
+  listRunConsoleGates(runId: string, limit: number): DecisionGateRow[] {
+    return this.db
+      .prepare(
+        `SELECT * FROM decision_gates
+          WHERE run_id = ?
+          ORDER BY created_at DESC, id DESC
+          LIMIT ?`
+      )
+      .all(runId, limit) as DecisionGateRow[]
   }
 
   getGate(id: string): DecisionGateRow | undefined {

@@ -60,14 +60,19 @@ export class OrchestrationMutationExecutor {
     if (begun.disposition === 'completed') {
       const active = this.inFlight.get(key)
       if (active) {
-        return attachMutationReceipt(await active, requestId, true)
+        const result = await active
+        markConsoleOperatorReplay(db, request.method, callerFingerprint, requestId)
+        return attachMutationReceipt(result, requestId, true)
       }
+      markConsoleOperatorReplay(db, request.method, callerFingerprint, requestId)
       return attachMutationReceipt(JSON.parse(begun.row.receipt ?? 'null'), requestId, true)
     }
     if (begun.disposition === 'pending') {
       const active = this.inFlight.get(key)
       if (active) {
-        return attachMutationReceipt(await active, requestId, true)
+        const result = await active
+        markConsoleOperatorReplay(db, request.method, callerFingerprint, requestId)
+        return attachMutationReceipt(result, requestId, true)
       }
       if (request.method !== 'orchestration.workerRelease') {
         const recovery = getPendingWorkerStartRecovery(request.method, begun.row.receipt)
@@ -108,6 +113,17 @@ export class OrchestrationMutationExecutor {
     } finally {
       this.inFlight.delete(key)
     }
+  }
+}
+
+function markConsoleOperatorReplay(
+  db: ReturnType<OrcaRuntimeService['getOrchestrationDb']>,
+  method: string,
+  callerFingerprint: string,
+  requestId: string
+): void {
+  if (method.startsWith('orchestration.console')) {
+    db.markOperatorActionReplayed(callerFingerprint, requestId)
   }
 }
 

@@ -27,7 +27,11 @@ const mocks = vi.hoisted(() => ({
     setActiveView: vi.fn(),
     setActiveTabType: vi.fn(),
     revealWorktreeInSidebar: vi.fn(),
-    setActiveTab: vi.fn()
+    setActiveTab: vi.fn(),
+    setRunConsoleRuntimeTargetKey: vi.fn(),
+    setRunConsoleSelectedRunId: vi.fn(),
+    setRunConsoleSelectedTaskId: vi.fn(),
+    openRunsPage: vi.fn()
   }
 }))
 
@@ -392,6 +396,39 @@ describe('createTerminalHandleLinkProvider', () => {
       params: { terminal: 'term_worker', navigation: 'host' }
     })
     expect(preventDefault).toHaveBeenCalled()
+  })
+
+  it('opens an exact task in Run Console on modified task activation', async () => {
+    window.api.runtime.call = vi.fn().mockResolvedValue({
+      ok: true,
+      result: {
+        dispatch: {
+          id: 'dispatch-1',
+          run_id: 'run-1',
+          task_id: 'task_worker',
+          assignee_handle: 'term_worker'
+        }
+      }
+    })
+    const links = await collectLinks([makeBufferLine('Task: task_worker')])
+
+    links[0].activate(
+      {
+        metaKey: true,
+        ctrlKey: false,
+        shiftKey: true,
+        preventDefault: vi.fn()
+      } as unknown as MouseEvent,
+      links[0].text
+    )
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(mocks.storeState.setRunConsoleRuntimeTargetKey).toHaveBeenCalledWith('local')
+    expect(mocks.storeState.setRunConsoleSelectedRunId).toHaveBeenCalledWith('run-1')
+    expect(mocks.storeState.setRunConsoleSelectedTaskId).toHaveBeenCalledWith('task_worker')
+    expect(mocks.storeState.openRunsPage).toHaveBeenCalled()
+    expect(window.api.runtime.call).toHaveBeenCalledTimes(1)
   })
 
   it('focuses resolved task terminals directly when they are already mounted', async () => {

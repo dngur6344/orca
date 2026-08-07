@@ -21,6 +21,7 @@ import { isPluginPanelTabKey } from '../../../../shared/plugins/plugin-manifest'
 import type { TaskProvider } from '../../../../shared/types'
 import { TaskResumeState } from './task-resume-state-schema'
 import { omitUndefinedValues, tolerateUnknownValues } from './ui-update-value-tolerance'
+import { CLIENT_UI_NAVIGATION_UPDATE_FIELDS } from './client-ui-navigation-schemas'
 
 const NullableString = z.string().nullable()
 const StringArray = z.array(z.string())
@@ -180,21 +181,7 @@ const UiUpdateFields = z
   .object({
     lastActiveRepoId: NullableString.optional(),
     lastActiveWorktreeId: NullableString.optional(),
-    // Why: App.tsx persists this on every top-level view switch (#9002). Desktop
-    // hydration ignores it on 'sync' broadcasts, so accepting it cannot yank a
-    // paired window's current view — it only restores the view on next startup.
-    activeView: z
-      .enum([
-        'terminal',
-        'settings',
-        'tasks',
-        'activity',
-        'automations',
-        'space',
-        'skills',
-        'mobile'
-      ])
-      .optional(),
+    ...CLIENT_UI_NAVIGATION_UPDATE_FIELDS,
     sidebarWidth: z.number().finite().optional(),
     rightSidebarOpen: z.boolean().optional(),
     rightSidebarTab: RightSidebarTabParam.optional(),

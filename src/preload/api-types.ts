@@ -3361,7 +3361,11 @@ export type PreloadApi = {
   runtime: {
     syncWindowGraph: (graph: RuntimeSyncWindowGraph) => Promise<RuntimeSyncWindowGraphResult>
     getStatus: () => Promise<RuntimeStatus>
-    call: (args: { method: string; params?: unknown }) => Promise<RuntimeRpcResponse<unknown>>
+    call: (args: {
+      method: string
+      params?: unknown
+      orchestrationRequestId?: string
+    }) => Promise<RuntimeRpcResponse<unknown>>
     getTerminalFitOverrides: () => Promise<
       { ptyId: string; mode: 'mobile-fit' | 'remote-desktop-fit'; cols: number; rows: number }[]
     >
@@ -3428,6 +3432,7 @@ export type PreloadApi = {
       method: string
       params?: unknown
       timeoutMs?: number
+      orchestrationRequestId?: string
       expectedEnvironmentPairingRevision?: number
     }) => Promise<RuntimeRpcResponse<unknown>>
     subscribe: (

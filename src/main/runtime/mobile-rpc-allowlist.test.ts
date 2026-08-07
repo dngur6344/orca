@@ -141,4 +141,19 @@ describe('mobile RPC allowlist', () => {
       )
     ).toEqual([])
   })
+
+  it('does not grant mobile credentials Run Console operator authority', () => {
+    const allowed = mobileRpcAllowlist()
+    const operatorMethods = [
+      'orchestration.consoleReply',
+      'orchestration.consoleResolveGate',
+      'orchestration.consoleSendFollowup',
+      'orchestration.consoleStopWorker',
+      'orchestration.consoleAbandonWorker',
+      'orchestration.consoleReleaseWorker',
+      'orchestration.consoleRetainWorker'
+    ]
+
+    expect(operatorMethods.filter((method) => allowed.has(method))).toEqual([])
+  })
 })

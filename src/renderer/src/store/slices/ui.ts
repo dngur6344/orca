@@ -517,6 +517,19 @@ function sanitizeHydratedActiveView(
   return value
 }
 
+function sanitizeRunConsoleIdentifier(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+  const normalized = value.trim()
+  return normalized && normalized.length <= 512 ? normalized : null
+}
+
+function sanitizeRunConsoleTargetKey(value: unknown): string | null {
+  const key = sanitizeRunConsoleIdentifier(value)
+  return key === 'local' || key?.startsWith('environment:') ? key : null
+}
+
 let agentSendTargetModeInstanceCounter = 0
 
 function createAgentSendTargetModeInstanceId(): string {
@@ -615,6 +628,7 @@ export type UISlice = {
     | 'settings'
     | 'activity'
     | 'automations'
+    | 'runs'
     | 'space'
     | 'skills'
     | 'mobile'
@@ -623,6 +637,7 @@ export type UISlice = {
     | 'tasks'
     | 'activity'
     | 'automations'
+    | 'runs'
     | 'space'
     | 'skills'
     | 'mobile'
@@ -631,6 +646,7 @@ export type UISlice = {
     | 'settings'
     | 'tasks'
     | 'automations'
+    | 'runs'
     | 'space'
     | 'skills'
     | 'mobile'
@@ -639,6 +655,16 @@ export type UISlice = {
     | 'settings'
     | 'tasks'
     | 'activity'
+    | 'runs'
+    | 'space'
+    | 'skills'
+    | 'mobile'
+  previousViewBeforeRuns:
+    | 'terminal'
+    | 'settings'
+    | 'tasks'
+    | 'activity'
+    | 'automations'
     | 'space'
     | 'skills'
     | 'mobile'
@@ -648,6 +674,7 @@ export type UISlice = {
     | 'tasks'
     | 'activity'
     | 'automations'
+    | 'runs'
     | 'skills'
     | 'mobile'
   previousViewBeforeSkills:
@@ -656,6 +683,7 @@ export type UISlice = {
     | 'tasks'
     | 'activity'
     | 'automations'
+    | 'runs'
     | 'space'
     | 'mobile'
   previousViewBeforeMobile:
@@ -664,6 +692,7 @@ export type UISlice = {
     | 'tasks'
     | 'activity'
     | 'automations'
+    | 'runs'
     | 'space'
     | 'skills'
   setActiveView: (view: UISlice['activeView']) => void
@@ -740,6 +769,16 @@ export type UISlice = {
   ) => void
   openAutomationsPage: () => void
   closeAutomationsPage: () => void
+  runConsoleRuntimeTargetKey: string | null
+  runConsoleSelectedRunId: string | null
+  runConsoleSelectedTaskId: string | null
+  runConsoleViewMode: 'graph' | 'outline'
+  setRunConsoleRuntimeTargetKey: (key: string) => void
+  setRunConsoleSelectedRunId: (id: string | null) => void
+  setRunConsoleSelectedTaskId: (id: string | null) => void
+  setRunConsoleViewMode: (mode: 'graph' | 'outline') => void
+  openRunsPage: () => void
+  closeRunsPage: () => void
   openSpacePage: () => void
   closeSpacePage: () => void
   openSkillsPage: () => void
@@ -1233,6 +1272,7 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
   previousViewBeforeSettings: 'terminal',
   previousViewBeforeActivity: 'terminal',
   previousViewBeforeAutomations: 'terminal',
+  previousViewBeforeRuns: 'terminal',
   previousViewBeforeSpace: 'terminal',
   previousViewBeforeSkills: 'terminal',
   previousViewBeforeMobile: 'terminal',
@@ -1456,6 +1496,64 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
       }
       return {
         activeView: state.previousViewBeforeAutomations,
+        worktreeNavHistoryIndex: nextHistoryIndex
+      }
+    }),
+  runConsoleRuntimeTargetKey: null,
+  runConsoleSelectedRunId: null,
+  runConsoleSelectedTaskId: null,
+  runConsoleViewMode: 'graph',
+  setRunConsoleRuntimeTargetKey: (key) => {
+    const normalized = key.trim()
+    if (!normalized) {
+      return
+    }
+    void window.api.ui.set({
+      runConsoleRuntimeTargetKey: normalized,
+      runConsoleSelectedRunId: null,
+      runConsoleSelectedTaskId: null
+    })
+    set({
+      runConsoleRuntimeTargetKey: normalized,
+      runConsoleSelectedRunId: null,
+      runConsoleSelectedTaskId: null
+    })
+  },
+  setRunConsoleSelectedRunId: (id) => {
+    void window.api.ui.set({
+      runConsoleSelectedRunId: id,
+      runConsoleSelectedTaskId: null
+    })
+    set({ runConsoleSelectedRunId: id, runConsoleSelectedTaskId: null })
+  },
+  setRunConsoleSelectedTaskId: (id) => {
+    void window.api.ui.set({ runConsoleSelectedTaskId: id })
+    set({ runConsoleSelectedTaskId: id })
+  },
+  setRunConsoleViewMode: (mode) => {
+    void window.api.ui.set({ runConsoleViewMode: mode })
+    set({ runConsoleViewMode: mode })
+  },
+  openRunsPage: () => {
+    get().recordViewVisit('runs')
+    set((state) => ({
+      activeView: 'runs',
+      previousViewBeforeRuns:
+        state.activeView === 'runs' ? state.previousViewBeforeRuns : state.activeView
+    }))
+  },
+  closeRunsPage: () =>
+    set((state) => {
+      const currentEntry = state.worktreeNavHistory[state.worktreeNavHistoryIndex]
+      let nextHistoryIndex = state.worktreeNavHistoryIndex
+      if (currentEntry === 'runs') {
+        const prev = findPrevLiveWorktreeHistoryIndex(state)
+        if (prev !== null) {
+          nextHistoryIndex = prev
+        }
+      }
+      return {
+        activeView: state.previousViewBeforeRuns,
         worktreeNavHistoryIndex: nextHistoryIndex
       }
     }),
@@ -2519,6 +2617,11 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
         browserDefaultZoomLevel: normalizeBrowserPageZoomLevel(ui.browserDefaultZoomLevel),
         browserKagiSessionLink: normalizeKagiSessionLink(ui.browserKagiSessionLink ?? ''),
         taskResumeState: sanitizeTaskResumeState(ui.taskResumeState),
+        runConsoleRuntimeTargetKey: sanitizeRunConsoleTargetKey(ui.runConsoleRuntimeTargetKey),
+        runConsoleSelectedRunId: sanitizeRunConsoleIdentifier(ui.runConsoleSelectedRunId),
+        runConsoleSelectedTaskId: sanitizeRunConsoleIdentifier(ui.runConsoleSelectedTaskId),
+        runConsoleViewMode:
+          ui.runConsoleViewMode === 'outline' ? ('outline' as const) : ('graph' as const),
         featureTipsSeenIds: normalizeFeatureTipIds(ui.featureTipsSeenIds),
         featureInteractions: normalizeFeatureInteractions(ui.featureInteractions),
         contextualToursSeenIds: normalizeContextualTourIds(ui.contextualToursSeenIds),

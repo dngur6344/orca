@@ -3358,6 +3358,7 @@ export type TopLevelView =
   | 'tasks'
   | 'activity'
   | 'automations'
+  | 'runs'
   | 'space'
   | 'skills'
   | 'mobile'
@@ -3367,6 +3368,10 @@ export type PersistedUIState = {
   lastActiveWorktreeId: string | null
   /** Active top-level view at save time, restored on relaunch; sanitized to 'terminal' if unknown or now-gated. */
   activeView: TopLevelView
+  runConsoleRuntimeTargetKey?: string | null
+  runConsoleSelectedRunId?: string | null
+  runConsoleSelectedTaskId?: string | null
+  runConsoleViewMode?: 'graph' | 'outline'
   sidebarWidth: number
   rightSidebarOpen: boolean
   rightSidebarTab: RightSidebarTab

@@ -22,13 +22,14 @@ import { clampOrchestrationAskTimeoutMs } from '../../../../shared/orchestration
 import { ORCHESTRATION_GATE_METHODS } from './orchestration-gates'
 import { resolveRunScope } from './orchestration-run-scope'
 import { ORCHESTRATION_RUN_METHODS } from './orchestration-runs'
+import { ORCHESTRATION_RUN_CONSOLE_METHODS } from './orchestration-run-console'
+import { ORCHESTRATION_RUN_CONSOLE_OPERATOR_METHODS } from './orchestration-run-console-operator'
 import { ORCHESTRATION_WORKER_METHODS } from './orchestration-worker-methods'
 import { ORCHESTRATION_FEDERATION_METHODS } from './orchestration-federation-methods'
 import { OrchestrationError } from '../../orchestration/orchestration-error'
 import type { OrcaRuntimeService } from '../../orca-runtime'
 import type { RunRow } from '../../orchestration/types'
-import { encodeFederatedControlMessage } from '../../orchestration/federation-control-message'
-import { ORCHESTRATION_FEDERATION_CONTROL_MAIL_PROTOCOL_VERSION } from '../../../../shared/protocol-version'
+import { sendExactDispatchControlMessage } from '../../orchestration/dispatch-control-message'
 
 const TASK_STATUSES: TaskStatus[] = [
   'pending',
@@ -380,6 +381,8 @@ function rejectFederatedExplicitTarget(params: { to?: string; run?: string }): v
 
 export const ORCHESTRATION_METHODS: RpcMethod[] = [
   ...ORCHESTRATION_RUN_METHODS,
+  ...ORCHESTRATION_RUN_CONSOLE_METHODS,
+  ...ORCHESTRATION_RUN_CONSOLE_OPERATOR_METHODS,
   ...ORCHESTRATION_WORKER_METHODS,
   ...ORCHESTRATION_FEDERATION_METHODS,
   defineMethod({
@@ -513,58 +516,32 @@ export const ORCHESTRATION_METHODS: RpcMethod[] = [
 
       if (!isGroupAddress(to)) {
         const federatedDispatchId = routing.dispatchId
-        const federatedTarget =
-          federatedDispatchId && to === `dispatch:${federatedDispatchId}`
-            ? db.getFederatedDispatch(federatedDispatchId)
-            : undefined
-        if (federatedTarget && federatedDispatchId) {
-          const dispatchId = federatedDispatchId
-          if (
-            federatedTarget.protocol_version <
-            ORCHESTRATION_FEDERATION_CONTROL_MAIL_PROTOCOL_VERSION
-          ) {
-            throw new OrchestrationError(
-              'capability_unsupported',
-              `Federated Dispatch ${dispatchId} does not support coordinator control mail; start a fresh worker after updating its Orca server.`
-            )
-          }
-          if (db.getWorkerDispatch(dispatchId)?.state !== 'ready') {
-            throw new OrchestrationError(
-              'dispatch_inactive',
-              `Federated Dispatch ${dispatchId} is not active.`
-            )
-          }
-          if (params.type === 'worker_done' || params.type === 'heartbeat') {
-            throw new OrchestrationError(
-              'invalid_argument',
-              'Coordinator-to-worker control mail cannot report worker lifecycle.'
-            )
-          }
+        if (
+          federatedDispatchId &&
+          to === `dispatch:${federatedDispatchId}` &&
+          params.type !== 'worker_done' &&
+          params.type !== 'heartbeat'
+        ) {
           revalidateLegacyCoordinator?.()
-          const relay = db.enqueueFederationRelay({
-            dispatchId,
-            direction: 'to_worker',
-            kind: 'control_message',
-            payload: encodeFederatedControlMessage({
-              from,
-              subject: params.subject,
-              body: params.body ?? '',
-              type: (params.type ?? 'status') as MessageType,
-              priority: (params.priority ?? 'normal') as MessagePriority,
-              threadId: params.threadId ?? null,
-              payload: params.payload ?? null
-            })
+          return sendExactDispatchControlMessage({
+            runtime,
+            runId: routing.run?.id ?? db.getDispatchContextById(federatedDispatchId)!.run_id,
+            dispatchId: federatedDispatchId,
+            from,
+            subject: params.subject,
+            body: params.body,
+            type: params.type as MessageType,
+            priority: params.priority as MessagePriority,
+            threadId: params.threadId,
+            payload: params.payload,
+            senderPaneKey,
+            deliveryContract: legacyWorkerDeliveryContract(
+              runtime,
+              routing.run?.id ?? legacyCoordinatorRunId,
+              to
+            ),
+            requireActive: false
           })
-          runtime.ensureOrchestrationFederationRelay(routing.run?.id)
-          return {
-            relay: {
-              messageId: relay.message_id,
-              sequence: relay.sequence,
-              dispatchId: relay.dispatch_id,
-              destination: 'worker',
-              accepted: true
-            }
-          }
         }
         // Point-to-point — existing single-recipient behavior
         revalidateLegacyCoordinator?.()

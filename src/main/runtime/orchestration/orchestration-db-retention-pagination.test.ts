@@ -240,7 +240,7 @@ describe('OrchestrationDb dispatch assignee index migration', () => {
 
     db = new OrchestrationDb(dbPath)
     const sqlite = sqliteFor(db)
-    expect(sqlite.pragma('user_version', { simple: true })).toBe(25)
+    expect(sqlite.pragma('user_version', { simple: true })).toBe(26)
     expect(db.getDispatchContextById(dispatch.id)).toMatchObject({ assignee_handle: 'term_worker' })
     expect(db.getTask(task.id)).toMatchObject({
       created_by_pane_key: null,
@@ -277,7 +277,7 @@ describe('OrchestrationDb dispatch assignee index migration', () => {
 
     db.close()
     db = new OrchestrationDb(dbPath)
-    expect(sqliteFor(db).pragma('user_version', { simple: true })).toBe(25)
+    expect(sqliteFor(db).pragma('user_version', { simple: true })).toBe(26)
     expect(db.getDispatchContextById(dispatch.id)).toBeDefined()
   })
 
@@ -309,7 +309,7 @@ describe('OrchestrationDb dispatch assignee index migration', () => {
 
     db = new OrchestrationDb(dbPath)
     const sqlite = sqliteFor(db)
-    expect(sqlite.pragma('user_version', { simple: true })).toBe(25)
+    expect(sqlite.pragma('user_version', { simple: true })).toBe(26)
     expect(db.getTask(task.id)).toMatchObject({
       created_by_pane_key: 'tab_creator:leaf_creator',
       created_by_process_incarnation: 'pty_creator:incarnation-a',
@@ -328,7 +328,41 @@ describe('OrchestrationDb dispatch assignee index migration', () => {
 
     db.close()
     db = new OrchestrationDb(dbPath)
-    expect(sqliteFor(db).pragma('user_version', { simple: true })).toBe(25)
+    expect(sqliteFor(db).pragma('user_version', { simple: true })).toBe(26)
     expect(db.getTask(task.id)?.created_by_process_incarnation).toBe('pty_creator:incarnation-a')
+  })
+
+  it('adds the bounded operator audit table to a v25 database idempotently', () => {
+    tempDir = mkdtempSync(join(tmpdir(), 'orca-operator-audit-migration-'))
+    const dbPath = join(tempDir, 'orchestration.db')
+    db = new OrchestrationDb(dbPath)
+    db.close()
+    db = undefined
+
+    const oldDb = new Database(dbPath)
+    oldDb.exec(`
+      DROP INDEX IF EXISTS idx_operator_actions_run_created;
+      DROP TABLE IF EXISTS orchestration_operator_actions;
+    `)
+    oldDb.pragma('user_version = 25')
+    oldDb.close()
+
+    db = new OrchestrationDb(dbPath)
+    const sqlite = sqliteFor(db)
+    expect(sqlite.pragma('user_version', { simple: true })).toBe(26)
+    expect(
+      sqlite
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+        .get('orchestration_operator_actions')
+    ).toBeDefined()
+    expect(
+      sqlite
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?")
+        .get('idx_operator_actions_run_created')
+    ).toBeDefined()
+
+    db.close()
+    db = new OrchestrationDb(dbPath)
+    expect(sqliteFor(db).pragma('user_version', { simple: true })).toBe(26)
   })
 })

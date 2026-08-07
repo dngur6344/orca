@@ -14423,6 +14423,158 @@
           "deleteTable": "표 삭제"
         }
       }
+    },
+    "runConsole": {
+      "noSetup": {
+        "title": "오케스트레이션 설정이 필요합니다",
+        "description": "Run Console을 열기 전에 오케스트레이션 설정을 완료하세요."
+      },
+      "updateRequired": {
+        "title": "런타임 업데이트가 필요합니다",
+        "description": "실행을 살펴보고 감독하려면 이 런타임의 Orca를 업데이트하세요."
+      },
+      "disconnected": {
+        "title": "런타임을 사용할 수 없습니다",
+        "description": "이 런타임에 연결할 수 없습니다."
+      },
+      "stale": "런타임이 다시 연결되는 동안 마지막으로 불러온 데이터를 표시합니다.",
+      "selectRun": {
+        "title": "실행 선택",
+        "description": "작업과 주의 항목을 살펴볼 실행을 선택하세요."
+      },
+      "task": {
+        "placeholder": "작업 구조와 세부 정보가 여기에 표시됩니다.",
+        "status": {
+          "pending": "대기 중",
+          "ready": "준비됨",
+          "dispatched": "전달됨",
+          "completed": "완료됨",
+          "failed": "실패함",
+          "blocked": "차단됨"
+        }
+      },
+      "attention": {
+        "title": "주의 필요",
+        "empty": "주의가 필요한 항목이 없습니다.",
+        "selectRun": "주의 항목을 살펴볼 실행을 선택하세요.",
+        "question": "질문",
+        "questionFallback": "답변 필요",
+        "gate": "결정 게이트",
+        "gateFallback": "결정 필요",
+        "failure": "실패",
+        "failureTitle": "실패한 시도를 검토하세요",
+        "resource": "리소스 결정",
+        "resourceTitle": "리소스를 해제하거나 유지하세요"
+      },
+      "title": "실행",
+      "subtitle": "목표와 주의 항목 감독",
+      "runtime": {
+        "label": "실행 런타임",
+        "local": "로컬 런타임"
+      },
+      "refresh": "실행 새로고침",
+      "close": "실행 닫기",
+      "runList": {
+        "search": "실행 검색",
+        "filter": "실행 필터",
+        "filterAll": "모든 상태",
+        "groupAttention": "주의 필요",
+        "groupActive": "활성",
+        "groupCompleted": "완료됨",
+        "loading": "실행 불러오는 중…",
+        "empty": "아직 오케스트레이션 실행이 없습니다.",
+        "noMatches": "검색과 일치하는 실행이 없습니다.",
+        "loadMore": "더 불러오기",
+        "attentionCount": "주의 {{value0}}개",
+        "taskCount": "작업 {{value0}}/{{value1}}개",
+        "stateReadOnly": "읽기 전용",
+        "stateAttention": "주의",
+        "stateUnknown": "알 수 없음"
+      },
+      "graph": {
+        "label": "작업 의존성 그래프",
+        "taskLabel": "{{value0}}, {{value1}}, 의존성 {{value2}}개",
+        "attentionCount": "주의 {{value0}}개"
+      },
+      "inspector": {
+        "label": "작업 검사기",
+        "tab": {
+          "overview": "개요",
+          "worker": "워커",
+          "messages": "메시지",
+          "attempts": "시도",
+          "evidence": "증거"
+        },
+        "status": "상태",
+        "taskId": "작업 ID",
+        "dependencies": "의존성",
+        "spec": "명세",
+        "result": "결과",
+        "noWorker": "이 작업에 연결된 워커가 없습니다.",
+        "openTerminal": "터미널 열기",
+        "loadingOutput": "워커 출력 불러오는 중…",
+        "emptyOutput": "사용 가능한 워커 출력이 없습니다.",
+        "noMessages": "이 작업의 메시지 참조가 없습니다.",
+        "noAttempts": "아직 디스패치 시도가 없습니다.",
+        "unassigned": "할당되지 않음",
+        "failures": "회 실패",
+        "noEvidence": "이 작업의 주의 항목이나 운영자 증거가 없습니다.",
+        "description": "작업 세부 정보와 워커 증거"
+      },
+      "outline": {
+        "label": "작업 의존성 개요",
+        "dependsOn": "{{value0}}에 의존",
+        "rootTask": "루트 작업"
+      },
+      "tasks": {
+        "title": "작업",
+        "viewMode": "작업 보기",
+        "graph": "그래프",
+        "outline": "개요",
+        "inspect": "살펴보기",
+        "empty": "이 실행에는 작업이 없습니다.",
+        "selectTask": "세부 정보를 살펴볼 작업을 선택하세요.",
+        "fallbackLarge": "그래프로 표시하기에 실행이 너무 큽니다. 개요를 표시합니다.",
+        "fallbackDuplicate": "중복된 작업 ID 때문에 그래프를 안전하게 표시할 수 없습니다. 개요를 표시합니다.",
+        "fallbackMissing": "의존성 데이터가 완전하지 않습니다. 개요를 표시합니다.",
+        "fallbackCycle": "의존성 순환이 감지되었습니다. 개요를 표시합니다."
+      },
+      "actions": {
+        "resolutionLabel": "결정 내용",
+        "resolveGate": "게이트 결정",
+        "readOnly": "이 실행에서는 동작을 수행할 수 없습니다.",
+        "pending": "런타임 응답을 기다리는 중…",
+        "unknown": "결과 불명",
+        "unknownDescription": "최신 감사 상태를 확인한 다음 같은 요청 ID로 다시 시도하세요.",
+        "retry": "안전하게 다시 시도",
+        "replayed": "기존 요청 기록에서 확인되었습니다.",
+        "completed": "동작이 완료되었습니다.",
+        "answerLabel": "답변",
+        "sendAnswer": "답변 보내기",
+        "workerControls": "워커 제어",
+        "followup": "정확한 디스패치에 후속 메시지",
+        "sendFollowup": "후속 메시지 보내기",
+        "staleWorker": "이 워커는 작업의 최신 디스패치가 아닙니다. 제어가 비활성화되었습니다.",
+        "federatedRelease": "연결된 워커 런타임이 이 리소스를 소유하므로 해제할 수 없습니다.",
+        "cancel": "취소",
+        "stop": "중지",
+        "stopTitle": "이 워커를 정확히 지정해 중지할까요?",
+        "stopDescription": "정상 종료를 요청하고 복구 가능한 작업 및 리소스 상태를 보존합니다.",
+        "confirmStop": "워커 중지",
+        "abandon": "포기",
+        "abandonTitle": "이 워커를 정확히 지정해 포기할까요?",
+        "abandonDescription": "프로세스나 리소스가 정리되었다고 간주하지 않고 이 디스패치를 포기한 것으로 표시합니다.",
+        "confirmAbandon": "워커 포기",
+        "release": "해제",
+        "releaseTitle": "이 워커 리소스를 해제할까요?",
+        "releaseDescription": "기존 정리 계약을 실행하고, 지원되는 경우 제한된 출력 증거를 보존합니다.",
+        "confirmRelease": "리소스 해제",
+        "retain": "유지",
+        "retainTitle": "이 워커 리소스를 유지할까요?",
+        "retainDescription": "리소스를 사용 가능한 상태로 유지하고 운영자 결정을 기록합니다.",
+        "confirmRetain": "리소스 유지",
+        "staleSnapshot": "동작을 수행하기 전에 현재 런타임 데이터를 새로고침하세요."
+      }
     }
   },
   "components": {

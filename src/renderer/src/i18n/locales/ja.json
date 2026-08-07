@@ -14412,6 +14412,158 @@
           "deleteTable": "テーブルを削除"
         }
       }
+    },
+    "runConsole": {
+      "noSetup": {
+        "title": "オーケストレーションの設定が必要です",
+        "description": "Run Consoleを開く前にオーケストレーションの設定を完了してください。"
+      },
+      "updateRequired": {
+        "title": "ランタイムの更新が必要です",
+        "description": "実行を確認して監督するには、このランタイムのOrcaを更新してください。"
+      },
+      "disconnected": {
+        "title": "ランタイムを利用できません",
+        "description": "このランタイムに接続できませんでした。"
+      },
+      "stale": "ランタイムの再接続中は、最後に取得できたデータを表示します。",
+      "selectRun": {
+        "title": "実行を選択",
+        "description": "タスクと要確認項目を調べる実行を選択してください。"
+      },
+      "task": {
+        "placeholder": "タスク構造と詳細がここに表示されます。",
+        "status": {
+          "pending": "保留中",
+          "ready": "準備完了",
+          "dispatched": "ディスパッチ済み",
+          "completed": "完了",
+          "failed": "失敗",
+          "blocked": "ブロック中"
+        }
+      },
+      "attention": {
+        "title": "要確認",
+        "empty": "確認が必要な項目はありません。",
+        "selectRun": "要確認項目を調べる実行を選択してください。",
+        "question": "質問",
+        "questionFallback": "回答が必要です",
+        "gate": "判断ゲート",
+        "gateFallback": "判断が必要です",
+        "failure": "失敗",
+        "failureTitle": "失敗した試行を確認してください",
+        "resource": "リソースの判断",
+        "resourceTitle": "リソースを解放または保持してください"
+      },
+      "title": "実行",
+      "subtitle": "目標と要確認項目を監督",
+      "runtime": {
+        "label": "実行ランタイム",
+        "local": "ローカルランタイム"
+      },
+      "refresh": "実行を更新",
+      "close": "実行を閉じる",
+      "runList": {
+        "search": "実行を検索",
+        "filter": "実行を絞り込む",
+        "filterAll": "すべての状態",
+        "groupAttention": "要確認",
+        "groupActive": "進行中",
+        "groupCompleted": "完了",
+        "loading": "実行を読み込み中…",
+        "empty": "オーケストレーションの実行はまだありません。",
+        "noMatches": "検索条件に一致する実行はありません。",
+        "loadMore": "さらに読み込む",
+        "attentionCount": "要確認 {{value0}}件",
+        "taskCount": "タスク {{value0}}/{{value1}}件",
+        "stateReadOnly": "読み取り専用",
+        "stateAttention": "要確認",
+        "stateUnknown": "不明"
+      },
+      "graph": {
+        "label": "タスク依存関係グラフ",
+        "taskLabel": "{{value0}}、{{value1}}、依存関係{{value2}}件",
+        "attentionCount": "要確認 {{value0}}件"
+      },
+      "inspector": {
+        "label": "タスクインスペクター",
+        "tab": {
+          "overview": "概要",
+          "worker": "ワーカー",
+          "messages": "メッセージ",
+          "attempts": "試行",
+          "evidence": "証跡"
+        },
+        "status": "状態",
+        "taskId": "タスクID",
+        "dependencies": "依存関係",
+        "spec": "仕様",
+        "result": "結果",
+        "noWorker": "このタスクにワーカーは割り当てられていません。",
+        "openTerminal": "ターミナルを開く",
+        "loadingOutput": "ワーカー出力を読み込み中…",
+        "emptyOutput": "利用できるワーカー出力はありません。",
+        "noMessages": "このタスクにはメッセージ参照がありません。",
+        "noAttempts": "ディスパッチの試行はまだありません。",
+        "unassigned": "未割り当て",
+        "failures": "件の失敗",
+        "noEvidence": "このタスクには要確認項目やオペレーター証跡がありません。",
+        "description": "タスクの詳細とワーカー証跡"
+      },
+      "outline": {
+        "label": "タスク依存関係アウトライン",
+        "dependsOn": "{{value0}}に依存",
+        "rootTask": "ルートタスク"
+      },
+      "tasks": {
+        "title": "タスク",
+        "viewMode": "タスク表示",
+        "graph": "グラフ",
+        "outline": "アウトライン",
+        "inspect": "詳細を表示",
+        "empty": "この実行にはタスクがありません。",
+        "selectTask": "詳細を調べるタスクを選択してください。",
+        "fallbackLarge": "この実行はグラフで表示するには大きすぎます。アウトラインを表示します。",
+        "fallbackDuplicate": "タスクIDが重複しているため、安全にグラフを表示できません。アウトラインを表示します。",
+        "fallbackMissing": "依存関係データが不完全です。アウトラインを表示します。",
+        "fallbackCycle": "依存関係の循環を検出しました。アウトラインを表示します。"
+      },
+      "actions": {
+        "resolutionLabel": "判断内容",
+        "resolveGate": "ゲートを判断",
+        "readOnly": "この実行では操作を利用できません。",
+        "pending": "ランタイムの応答を待っています…",
+        "unknown": "結果不明",
+        "unknownDescription": "最新の監査状態を確認してから、同じリクエストIDで再試行してください。",
+        "retry": "安全に再試行",
+        "replayed": "既存のリクエスト記録から確認されました。",
+        "completed": "操作が完了しました。",
+        "answerLabel": "回答",
+        "sendAnswer": "回答を送信",
+        "workerControls": "ワーカー操作",
+        "followup": "特定ディスパッチへのフォローアップ",
+        "sendFollowup": "フォローアップを送信",
+        "staleWorker": "このワーカーはタスクの最新ディスパッチではありません。操作は無効です。",
+        "federatedRelease": "接続先のワーカーランタイムがこのリソースを所有しているため、解放できません。",
+        "cancel": "キャンセル",
+        "stop": "停止",
+        "stopTitle": "このワーカーを指定して停止しますか？",
+        "stopDescription": "正常停止を要求し、復旧可能なタスクとリソースの状態を保持します。",
+        "confirmStop": "ワーカーを停止",
+        "abandon": "放棄",
+        "abandonTitle": "このワーカーを指定して放棄しますか？",
+        "abandonDescription": "プロセスやリソースがクリーンアップされたとは見なさず、このディスパッチを放棄済みにします。",
+        "confirmAbandon": "ワーカーを放棄",
+        "release": "解放",
+        "releaseTitle": "このワーカーリソースを解放しますか？",
+        "releaseDescription": "既存のクリーンアップ契約を実行し、対応している場合は範囲を限定した出力証跡を保持します。",
+        "confirmRelease": "リソースを解放",
+        "retain": "保持",
+        "retainTitle": "このワーカーリソースを保持しますか？",
+        "retainDescription": "リソースを利用可能な状態に保ち、オペレーターの判断を記録します。",
+        "confirmRetain": "リソースを保持",
+        "staleSnapshot": "操作する前に、現在のランタイムデータを更新してください。"
+      }
     }
   },
   "components": {

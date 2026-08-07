@@ -4389,7 +4389,8 @@
           "196c1b5362": "Open GitLab tasks",
           "0ccba862b8": "Open GitHub tasks",
           "fee535205b": "Tasks",
-          "d599269755": "Hide from sidebar"
+          "d599269755": "Hide from sidebar",
+          "runs": "Runs"
         },
         "SidebarRepositoryFilterSection": {
           "d3a9c4cea1": "Clear",
@@ -14761,6 +14762,158 @@
           "deleteColumn": "Delete column",
           "deleteTable": "Delete table"
         }
+      }
+    },
+    "runConsole": {
+      "noSetup": {
+        "title": "Orchestration setup is required",
+        "description": "Complete orchestration setup before opening Run Console."
+      },
+      "updateRequired": {
+        "title": "Runtime update required",
+        "description": "Update Orca on this runtime to inspect and supervise runs."
+      },
+      "disconnected": {
+        "title": "Runtime unavailable",
+        "description": "Could not reach this runtime."
+      },
+      "stale": "Showing the last successful data while the runtime reconnects.",
+      "selectRun": {
+        "title": "Select a run",
+        "description": "Choose a run to inspect its tasks and attention."
+      },
+      "task": {
+        "placeholder": "Task structure and details will appear here.",
+        "status": {
+          "pending": "Pending",
+          "ready": "Ready",
+          "dispatched": "Dispatched",
+          "completed": "Completed",
+          "failed": "Failed",
+          "blocked": "Blocked"
+        }
+      },
+      "attention": {
+        "title": "Needs attention",
+        "empty": "No items need attention.",
+        "selectRun": "Select a run to inspect attention.",
+        "question": "Question",
+        "questionFallback": "Answer required",
+        "gate": "Decision gate",
+        "gateFallback": "Decision required",
+        "failure": "Failure",
+        "failureTitle": "Review the failed attempt",
+        "resource": "Resource decision",
+        "resourceTitle": "Release or retain the resource"
+      },
+      "title": "Runs",
+      "subtitle": "Supervise objectives and attention",
+      "runtime": {
+        "label": "Run runtime",
+        "local": "Local runtime"
+      },
+      "refresh": "Refresh runs",
+      "close": "Close Runs",
+      "runList": {
+        "search": "Search runs",
+        "filter": "Filter runs",
+        "filterAll": "All states",
+        "groupAttention": "Needs attention",
+        "groupActive": "Active",
+        "groupCompleted": "Completed",
+        "loading": "Loading runs…",
+        "empty": "No orchestration runs yet.",
+        "noMatches": "No runs match this search.",
+        "loadMore": "Load more",
+        "attentionCount": "{{value0}} attention",
+        "taskCount": "{{value0}}/{{value1}} tasks",
+        "stateReadOnly": "Read-only",
+        "stateAttention": "Attention",
+        "stateUnknown": "Unknown"
+      },
+      "graph": {
+        "label": "Task dependency graph",
+        "taskLabel": "{{value0}}, {{value1}}, {{value2}} dependencies",
+        "attentionCount": "{{value0}} attention"
+      },
+      "inspector": {
+        "label": "Task inspector",
+        "tab": {
+          "overview": "Overview",
+          "worker": "Worker",
+          "messages": "Messages",
+          "attempts": "Attempts",
+          "evidence": "Evidence"
+        },
+        "status": "Status",
+        "taskId": "Task ID",
+        "dependencies": "Dependencies",
+        "spec": "Specification",
+        "result": "Result",
+        "noWorker": "No worker is attached to this task.",
+        "openTerminal": "Open terminal",
+        "loadingOutput": "Loading worker output…",
+        "emptyOutput": "No worker output is available.",
+        "noMessages": "No message references for this task.",
+        "noAttempts": "No dispatch attempts yet.",
+        "unassigned": "Unassigned",
+        "failures": "failures",
+        "noEvidence": "No attention or operator evidence for this task.",
+        "description": "Task details and worker evidence"
+      },
+      "outline": {
+        "label": "Task dependency outline",
+        "dependsOn": "Depends on {{value0}}",
+        "rootTask": "Root task"
+      },
+      "tasks": {
+        "title": "Tasks",
+        "viewMode": "Task view",
+        "graph": "Graph",
+        "outline": "Outline",
+        "inspect": "Inspect",
+        "empty": "This run has no tasks.",
+        "selectTask": "Select a task to inspect details.",
+        "fallbackLarge": "This run is too large for the graph. Showing the outline.",
+        "fallbackDuplicate": "Duplicate task IDs prevent a safe graph. Showing the outline.",
+        "fallbackMissing": "Dependency data is incomplete. Showing the outline.",
+        "fallbackCycle": "A dependency cycle was detected. Showing the outline."
+      },
+      "actions": {
+        "resolutionLabel": "Resolution",
+        "resolveGate": "Resolve gate",
+        "readOnly": "Action unavailable for this run.",
+        "pending": "Waiting for the runtime…",
+        "unknown": "Outcome unknown",
+        "unknownDescription": "Inspect the latest audit state, then retry with the same request ID.",
+        "retry": "Retry safely",
+        "replayed": "Confirmed from the existing request record.",
+        "completed": "Action completed.",
+        "answerLabel": "Answer",
+        "sendAnswer": "Send answer",
+        "workerControls": "Worker controls",
+        "followup": "Exact-dispatch follow-up",
+        "sendFollowup": "Send follow-up",
+        "staleWorker": "This worker is not the task’s latest dispatch. Controls are disabled.",
+        "federatedRelease": "Release is unavailable because the connected worker runtime owns this resource.",
+        "cancel": "Cancel",
+        "stop": "Stop",
+        "stopTitle": "Stop this exact worker?",
+        "stopDescription": "Requests a graceful stop and preserves recoverable task and resource state.",
+        "confirmStop": "Stop worker",
+        "abandon": "Abandon",
+        "abandonTitle": "Abandon this exact worker?",
+        "abandonDescription": "Marks the dispatch abandoned without claiming that its process or resources were cleaned up.",
+        "confirmAbandon": "Abandon worker",
+        "release": "Release",
+        "releaseTitle": "Release this worker resource?",
+        "releaseDescription": "Runs the existing cleanup contract and preserves bounded output evidence when supported.",
+        "confirmRelease": "Release resource",
+        "retain": "Retain",
+        "retainTitle": "Retain this worker resource?",
+        "retainDescription": "Keeps the resource available and records the operator decision.",
+        "confirmRetain": "Retain resource",
+        "staleSnapshot": "Refresh current runtime data before taking an action."
       }
     }
   },

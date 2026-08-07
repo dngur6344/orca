@@ -1,5 +1,5 @@
 import React from 'react'
-import { Bell, CalendarClock, EyeOff, Search, Smartphone } from 'lucide-react'
+import { Bell, CalendarClock, EyeOff, ListTree, Search, Smartphone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
@@ -16,6 +16,7 @@ import { SidebarTaskNavButton } from './SidebarTaskNavButton'
 import { HideSidebarMenu } from './sidebar-nav-controls'
 import { translate } from '@/i18n/i18n'
 import { lazyWithRetry } from '@/lib/lazy-with-retry'
+import { useOrchestrationSetupEnabled } from '@/lib/use-orchestration-setup-enabled'
 
 export { getSetupGuideSidebarEntryReady, shouldShowSetupGuideEntry } from './SetupGuideSidebarEntry'
 
@@ -51,6 +52,7 @@ const SidebarNav = React.memo(function SidebarNav() {
   useTranslation()
   const worktreePaletteShortcutCombos = useShortcutKeyComboDetails('worktree.palette')
   const openAutomationsPage = useAppStore((s) => s.openAutomationsPage)
+  const openRunsPage = useAppStore((s) => s.openRunsPage)
   const openActivityPage = useAppStore((s) => s.openActivityPage)
   const openMobilePage = useAppStore((s) => s.openMobilePage)
   const openModal = useAppStore((s) => s.openModal)
@@ -65,8 +67,10 @@ const SidebarNav = React.memo(function SidebarNav() {
   const showAgentDashboardButton = (experimentalSidebarButtons & 2) !== 0
   const showAutomationsButton = useAppStore((s) => shouldShowAutomationsButton(s.settings))
   const showMobileButton = useAppStore((s) => shouldShowMobileButton(s.settings))
+  const showRunsButton = useOrchestrationSetupEnabled()
   const automationsActive = activeView === 'automations'
   const activityActive = activeView === 'activity'
+  const runsActive = activeView === 'runs'
   const mobileActive = activeView === 'mobile'
   const activityUnreadCount = useActivityUnreadCount(showAgentsButton, 'sidebar-badge')
   const mobileOnboardingBadge = useMobileSidebarOnboardingBadge(showMobileButton)
@@ -84,6 +88,27 @@ const SidebarNav = React.memo(function SidebarNav() {
     >
       <SetupGuideSidebarEntry />
       <SidebarTaskNavButton />
+      {showRunsButton ? (
+        <button
+          type="button"
+          onClick={openRunsPage}
+          aria-current={runsActive ? 'page' : undefined}
+          className={cn(
+            'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium tracking-tight transition-colors',
+            runsActive
+              ? 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground'
+              : 'text-worktree-sidebar-foreground/60 hover:bg-worktree-sidebar-foreground/8'
+          )}
+        >
+          <ListTree
+            className={cn('size-4 shrink-0', !runsActive && 'text-worktree-sidebar-foreground/30')}
+            strokeWidth={runsActive ? 2.25 : 1.75}
+          />
+          <span className="flex-1">
+            {translate('auto.components.sidebar.SidebarNav.runs', 'Runs')}
+          </span>
+        </button>
+      ) : null}
       {showAutomationsButton ? (
         <ContextMenu>
           <ContextMenuTrigger asChild>

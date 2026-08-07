@@ -18,12 +18,44 @@ vi.mock('electron', () => ({
 
 import { registerRuntimeHandlers } from './runtime'
 import { TERMINAL_FIT_RESTORE_DEADLINE_MS } from '../../shared/terminal-fit-restore-deadline'
+import { ORCHESTRATION_CONTRACT_VERSION } from '../../shared/protocol-version'
+import { RpcDispatcher } from '../runtime/rpc/dispatcher'
 
 describe('registerRuntimeHandlers', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     handleMock.mockReset()
     removeHandlerMock.mockReset()
     fromWebContentsMock.mockReset()
+  })
+
+  it('stamps trusted orchestration metadata for local desktop mutations', async () => {
+    const dispatch = vi.spyOn(RpcDispatcher.prototype, 'dispatch').mockResolvedValue({
+      id: 'desktop-ipc',
+      ok: true,
+      result: { accepted: true },
+      _meta: { runtimeId: 'runtime-1' }
+    })
+    const runtime = {
+      getRuntimeId: vi.fn().mockReturnValue('runtime-1')
+    }
+    registerRuntimeHandlers(runtime as never)
+    const registration = handleMock.mock.calls.find(([channel]) => channel === 'runtime:call')
+
+    await registration![1](null, {
+      method: 'orchestration.consoleRetainWorker',
+      params: { run: 'run-1', dispatch: 'dispatch-1' },
+      orchestrationRequestId: 'operator-request-1'
+    })
+
+    expect(dispatch).toHaveBeenCalledWith({
+      id: 'desktop-ipc',
+      authToken: 'desktop-ipc',
+      method: 'orchestration.consoleRetainWorker',
+      params: { run: 'run-1', dispatch: 'dispatch-1' },
+      orchestrationRequestId: 'operator-request-1',
+      orchestrationContractVersion: ORCHESTRATION_CONTRACT_VERSION
+    })
   })
 
   it('routes sync requests through the authoritative browser window id', () => {

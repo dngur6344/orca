@@ -684,6 +684,48 @@ describe('registerRuntimeEnvironmentHandlers', () => {
     expect(sendRemoteRuntimeConnectionRequestMock).not.toHaveBeenCalled()
   })
 
+  it('stamps trusted orchestration metadata for saved-runtime mutations', async () => {
+    registerRuntimeEnvironmentHandlers(store as never)
+    sendRemoteRuntimeRequestMock.mockResolvedValue({
+      id: 'rpc-operator',
+      ok: true,
+      result: { retained: true },
+      _meta: { runtimeId: 'runtime-remote' }
+    })
+    const add = handler<
+      { name: string; pairingCode: string },
+      { environment: { id: string; name: string } }
+    >('runtimeEnvironments:addFromPairingCode')
+    await add(null, { name: 'desk', pairingCode: pairingCode() })
+    const call = handler<
+      {
+        selector: string
+        method: string
+        params?: unknown
+        orchestrationRequestId?: string
+      },
+      { ok: true; result: unknown }
+    >('runtimeEnvironments:call')
+
+    await call(null, {
+      selector: 'desk',
+      method: 'orchestration.consoleRetainWorker',
+      params: { run: 'run-1', dispatch: 'dispatch-1' },
+      orchestrationRequestId: 'operator-request-1'
+    })
+
+    expect(sendRemoteRuntimeRequestMock).toHaveBeenCalledWith(
+      expect.objectContaining({ endpoint: 'ws://127.0.0.1:6768' }),
+      'orchestration.consoleRetainWorker',
+      { run: 'run-1', dispatch: 'dispatch-1' },
+      expect.any(Number),
+      {
+        orchestrationRequestId: 'operator-request-1',
+        orchestrationContractVersion: 1
+      }
+    )
+  })
+
   it('falls back to one-shot RPC when the saved runtime lacks shared-control support', async () => {
     registerRuntimeEnvironmentHandlers(store as never)
     sendRemoteRuntimeRequestMock.mockImplementation(async (_pairing, method) => {

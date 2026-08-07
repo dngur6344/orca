@@ -14432,6 +14432,158 @@
           "deleteTable": "删除表格"
         }
       }
+    },
+    "runConsole": {
+      "noSetup": {
+        "title": "需要设置编排功能",
+        "description": "请先完成编排设置，再打开运行控制台。"
+      },
+      "updateRequired": {
+        "title": "需要更新运行时",
+        "description": "请更新此运行时上的 Orca，以检查和监管运行。"
+      },
+      "disconnected": {
+        "title": "运行时不可用",
+        "description": "无法连接到此运行时。"
+      },
+      "stale": "运行时重新连接期间，显示上次成功获取的数据。",
+      "selectRun": {
+        "title": "选择运行",
+        "description": "选择一个运行以检查其任务和待处理事项。"
+      },
+      "task": {
+        "placeholder": "任务结构和详细信息将显示在此处。",
+        "status": {
+          "pending": "等待中",
+          "ready": "已就绪",
+          "dispatched": "已派发",
+          "completed": "已完成",
+          "failed": "失败",
+          "blocked": "已阻塞"
+        }
+      },
+      "attention": {
+        "title": "需要处理",
+        "empty": "没有需要处理的事项。",
+        "selectRun": "选择一个运行以检查待处理事项。",
+        "question": "问题",
+        "questionFallback": "需要回答",
+        "gate": "决策关卡",
+        "gateFallback": "需要决策",
+        "failure": "失败",
+        "failureTitle": "检查失败的尝试",
+        "resource": "资源决策",
+        "resourceTitle": "释放或保留资源"
+      },
+      "title": "运行",
+      "subtitle": "监管目标和待处理事项",
+      "runtime": {
+        "label": "运行所在的运行时",
+        "local": "本地运行时"
+      },
+      "refresh": "刷新运行",
+      "close": "关闭运行",
+      "runList": {
+        "search": "搜索运行",
+        "filter": "筛选运行",
+        "filterAll": "所有状态",
+        "groupAttention": "需要处理",
+        "groupActive": "进行中",
+        "groupCompleted": "已完成",
+        "loading": "正在加载运行…",
+        "empty": "尚无编排运行。",
+        "noMatches": "没有符合搜索条件的运行。",
+        "loadMore": "加载更多",
+        "attentionCount": "{{value0}} 项待处理",
+        "taskCount": "{{value0}}/{{value1}} 个任务",
+        "stateReadOnly": "只读",
+        "stateAttention": "待处理",
+        "stateUnknown": "未知"
+      },
+      "graph": {
+        "label": "任务依赖关系图",
+        "taskLabel": "{{value0}}，{{value1}}，{{value2}} 个依赖项",
+        "attentionCount": "{{value0}} 项待处理"
+      },
+      "inspector": {
+        "label": "任务检查器",
+        "tab": {
+          "overview": "概览",
+          "worker": "工作器",
+          "messages": "消息",
+          "attempts": "尝试",
+          "evidence": "证据"
+        },
+        "status": "状态",
+        "taskId": "任务 ID",
+        "dependencies": "依赖项",
+        "spec": "规范",
+        "result": "结果",
+        "noWorker": "此任务未关联工作器。",
+        "openTerminal": "打开终端",
+        "loadingOutput": "正在加载工作器输出…",
+        "emptyOutput": "没有可用的工作器输出。",
+        "noMessages": "此任务没有消息引用。",
+        "noAttempts": "尚无派发尝试。",
+        "unassigned": "未分配",
+        "failures": "次失败",
+        "noEvidence": "此任务没有待处理事项或操作员证据。",
+        "description": "任务详细信息和工作器证据"
+      },
+      "outline": {
+        "label": "任务依赖关系大纲",
+        "dependsOn": "依赖 {{value0}}",
+        "rootTask": "根任务"
+      },
+      "tasks": {
+        "title": "任务",
+        "viewMode": "任务视图",
+        "graph": "关系图",
+        "outline": "大纲",
+        "inspect": "检查",
+        "empty": "此运行没有任务。",
+        "selectTask": "选择一个任务以检查详细信息。",
+        "fallbackLarge": "此运行规模过大，无法显示关系图。现显示大纲。",
+        "fallbackDuplicate": "任务 ID 重复，无法安全显示关系图。现显示大纲。",
+        "fallbackMissing": "依赖关系数据不完整。现显示大纲。",
+        "fallbackCycle": "检测到循环依赖。现显示大纲。"
+      },
+      "actions": {
+        "resolutionLabel": "决策内容",
+        "resolveGate": "处理关卡",
+        "readOnly": "此运行无法执行该操作。",
+        "pending": "正在等待运行时响应…",
+        "unknown": "结果未知",
+        "unknownDescription": "请检查最新审计状态，然后使用相同的请求 ID 重试。",
+        "retry": "安全重试",
+        "replayed": "已从现有请求记录中确认。",
+        "completed": "操作已完成。",
+        "answerLabel": "回答",
+        "sendAnswer": "发送回答",
+        "workerControls": "工作器控制",
+        "followup": "向指定派发发送后续消息",
+        "sendFollowup": "发送后续消息",
+        "staleWorker": "此工作器不是该任务的最新派发。控制项已禁用。",
+        "federatedRelease": "连接的工作器运行时拥有此资源，因此无法释放。",
+        "cancel": "取消",
+        "stop": "停止",
+        "stopTitle": "停止这个指定的工作器？",
+        "stopDescription": "请求正常停止，并保留可恢复的任务和资源状态。",
+        "confirmStop": "停止工作器",
+        "abandon": "放弃",
+        "abandonTitle": "放弃这个指定的工作器？",
+        "abandonDescription": "将此派发标记为已放弃，但不声称其进程或资源已被清理。",
+        "confirmAbandon": "放弃工作器",
+        "release": "释放",
+        "releaseTitle": "释放此工作器资源？",
+        "releaseDescription": "执行现有清理契约，并在支持时保留有限的输出证据。",
+        "confirmRelease": "释放资源",
+        "retain": "保留",
+        "retainTitle": "保留此工作器资源？",
+        "retainDescription": "保持资源可用，并记录操作员的决定。",
+        "confirmRetain": "保留资源",
+        "staleSnapshot": "请先刷新当前运行时数据，再执行操作。"
+      }
     }
   },
   "components": {

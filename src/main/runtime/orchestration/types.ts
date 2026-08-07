@@ -132,6 +132,23 @@ export type MutationReceiptRow = {
   updated_at: string
 }
 
+export type OperatorActionState = 'attempted' | 'completed' | 'failed' | 'outcome_unknown'
+
+export type OperatorActionRow = {
+  id: string
+  request_id: string
+  actor_fingerprint: string
+  run_id: string
+  task_id: string | null
+  dispatch_id: string | null
+  action: string
+  state: OperatorActionState
+  error_code: string | null
+  replay_count: number
+  created_at: string
+  updated_at: string
+}
+
 export type WorkerDispatchState =
   | 'starting'
   | 'ready'

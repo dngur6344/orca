@@ -14412,6 +14412,158 @@
           "deleteTable": "Eliminar tabla"
         }
       }
+    },
+    "runConsole": {
+      "noSetup": {
+        "title": "Se requiere configurar la orquestación",
+        "description": "Completa la configuración de orquestación antes de abrir la Consola de ejecuciones."
+      },
+      "updateRequired": {
+        "title": "Se requiere actualizar el entorno",
+        "description": "Actualiza Orca en este entorno para inspeccionar y supervisar ejecuciones."
+      },
+      "disconnected": {
+        "title": "Entorno no disponible",
+        "description": "No se pudo acceder a este entorno."
+      },
+      "stale": "Se muestran los últimos datos disponibles mientras el entorno vuelve a conectarse.",
+      "selectRun": {
+        "title": "Selecciona una ejecución",
+        "description": "Elige una ejecución para inspeccionar sus tareas y asuntos pendientes."
+      },
+      "task": {
+        "placeholder": "La estructura y los detalles de las tareas aparecerán aquí.",
+        "status": {
+          "pending": "Pendiente",
+          "ready": "Lista",
+          "dispatched": "Enviada",
+          "completed": "Completada",
+          "failed": "Fallida",
+          "blocked": "Bloqueada"
+        }
+      },
+      "attention": {
+        "title": "Requiere atención",
+        "empty": "No hay elementos que requieran atención.",
+        "selectRun": "Selecciona una ejecución para inspeccionar los asuntos pendientes.",
+        "question": "Pregunta",
+        "questionFallback": "Se requiere una respuesta",
+        "gate": "Punto de decisión",
+        "gateFallback": "Se requiere una decisión",
+        "failure": "Fallo",
+        "failureTitle": "Revisa el intento fallido",
+        "resource": "Decisión sobre el recurso",
+        "resourceTitle": "Libera o conserva el recurso"
+      },
+      "title": "Ejecuciones",
+      "subtitle": "Supervisa objetivos y asuntos pendientes",
+      "runtime": {
+        "label": "Entorno de ejecución",
+        "local": "Entorno local"
+      },
+      "refresh": "Actualizar ejecuciones",
+      "close": "Cerrar Ejecuciones",
+      "runList": {
+        "search": "Buscar ejecuciones",
+        "filter": "Filtrar ejecuciones",
+        "filterAll": "Todos los estados",
+        "groupAttention": "Requiere atención",
+        "groupActive": "Activas",
+        "groupCompleted": "Completadas",
+        "loading": "Cargando ejecuciones…",
+        "empty": "Aún no hay ejecuciones de orquestación.",
+        "noMatches": "Ninguna ejecución coincide con esta búsqueda.",
+        "loadMore": "Cargar más",
+        "attentionCount": "{{value0}} pendientes",
+        "taskCount": "{{value0}}/{{value1}} tareas",
+        "stateReadOnly": "Solo lectura",
+        "stateAttention": "Atención",
+        "stateUnknown": "Desconocido"
+      },
+      "graph": {
+        "label": "Grafo de dependencias de tareas",
+        "taskLabel": "{{value0}}, {{value1}}, {{value2}} dependencias",
+        "attentionCount": "{{value0}} pendientes"
+      },
+      "inspector": {
+        "label": "Inspector de tareas",
+        "tab": {
+          "overview": "Resumen",
+          "worker": "Trabajador",
+          "messages": "Mensajes",
+          "attempts": "Intentos",
+          "evidence": "Evidencia"
+        },
+        "status": "Estado",
+        "taskId": "ID de tarea",
+        "dependencies": "Dependencias",
+        "spec": "Especificación",
+        "result": "Resultado",
+        "noWorker": "No hay ningún trabajador asociado a esta tarea.",
+        "openTerminal": "Abrir terminal",
+        "loadingOutput": "Cargando la salida del trabajador…",
+        "emptyOutput": "No hay salida disponible del trabajador.",
+        "noMessages": "No hay referencias de mensajes para esta tarea.",
+        "noAttempts": "Aún no hay intentos de envío.",
+        "unassigned": "Sin asignar",
+        "failures": "fallos",
+        "noEvidence": "No hay asuntos pendientes ni evidencia del operador para esta tarea.",
+        "description": "Detalles de la tarea y evidencia del trabajador"
+      },
+      "outline": {
+        "label": "Esquema de dependencias de tareas",
+        "dependsOn": "Depende de {{value0}}",
+        "rootTask": "Tarea raíz"
+      },
+      "tasks": {
+        "title": "Tareas",
+        "viewMode": "Vista de tareas",
+        "graph": "Grafo",
+        "outline": "Esquema",
+        "inspect": "Inspeccionar",
+        "empty": "Esta ejecución no tiene tareas.",
+        "selectTask": "Selecciona una tarea para inspeccionar sus detalles.",
+        "fallbackLarge": "Esta ejecución es demasiado grande para el grafo. Se muestra el esquema.",
+        "fallbackDuplicate": "Hay ID de tarea duplicados que impiden mostrar un grafo seguro. Se muestra el esquema.",
+        "fallbackMissing": "Los datos de dependencias están incompletos. Se muestra el esquema.",
+        "fallbackCycle": "Se detectó un ciclo de dependencias. Se muestra el esquema."
+      },
+      "actions": {
+        "resolutionLabel": "Decisión",
+        "resolveGate": "Resolver punto de decisión",
+        "readOnly": "La acción no está disponible para esta ejecución.",
+        "pending": "Esperando al entorno…",
+        "unknown": "Resultado desconocido",
+        "unknownDescription": "Inspecciona el estado de auditoría más reciente y vuelve a intentarlo con el mismo ID de solicitud.",
+        "retry": "Reintentar de forma segura",
+        "replayed": "Confirmado a partir del registro de solicitud existente.",
+        "completed": "Acción completada.",
+        "answerLabel": "Respuesta",
+        "sendAnswer": "Enviar respuesta",
+        "workerControls": "Controles del trabajador",
+        "followup": "Seguimiento al envío exacto",
+        "sendFollowup": "Enviar seguimiento",
+        "staleWorker": "Este trabajador no corresponde al envío más reciente de la tarea. Los controles están deshabilitados.",
+        "federatedRelease": "No se puede liberar porque el entorno del trabajador conectado posee este recurso.",
+        "cancel": "Cancelar",
+        "stop": "Detener",
+        "stopTitle": "¿Detener este trabajador exacto?",
+        "stopDescription": "Solicita una detención ordenada y conserva el estado recuperable de la tarea y el recurso.",
+        "confirmStop": "Detener trabajador",
+        "abandon": "Abandonar",
+        "abandonTitle": "¿Abandonar este trabajador exacto?",
+        "abandonDescription": "Marca el envío como abandonado sin afirmar que su proceso o sus recursos se hayan limpiado.",
+        "confirmAbandon": "Abandonar trabajador",
+        "release": "Liberar",
+        "releaseTitle": "¿Liberar este recurso del trabajador?",
+        "releaseDescription": "Ejecuta el contrato de limpieza existente y conserva evidencia acotada de la salida cuando sea compatible.",
+        "confirmRelease": "Liberar recurso",
+        "retain": "Conservar",
+        "retainTitle": "¿Conservar este recurso del trabajador?",
+        "retainDescription": "Mantiene el recurso disponible y registra la decisión del operador.",
+        "confirmRetain": "Conservar recurso",
+        "staleSnapshot": "Actualiza los datos del entorno actual antes de realizar una acción."
+      }
     }
   },
   "components": {

@@ -17,6 +17,13 @@ describe('orchestration RPC contract', () => {
     ['orchestration.workerStart', {}],
     ['orchestration.workerStop', {}],
     ['orchestration.workerAbandon', {}],
+    ['orchestration.consoleReply', {}],
+    ['orchestration.consoleResolveGate', {}],
+    ['orchestration.consoleSendFollowup', {}],
+    ['orchestration.consoleStopWorker', {}],
+    ['orchestration.consoleAbandonWorker', {}],
+    ['orchestration.consoleReleaseWorker', {}],
+    ['orchestration.consoleRetainWorker', {}],
     ['orchestration.ask', {}],
     ['orchestration.gateCreate', {}],
     ['orchestration.gateResolve', {}],
@@ -37,6 +44,8 @@ describe('orchestration RPC contract', () => {
 
   it.each([
     ['orchestration.runList', {}],
+    ['orchestration.consoleList', {}],
+    ['orchestration.consoleSnapshot', {}],
     ['orchestration.runShow', {}],
     ['orchestration.runCurrent', {}],
     ['orchestration.inbox', {}],

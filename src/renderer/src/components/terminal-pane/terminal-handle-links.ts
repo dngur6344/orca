@@ -9,7 +9,8 @@ import { buildWrappedLogicalLine, rangeForParsedFileLink } from './wrapped-termi
 import {
   extractOrchestrationTaskLinks,
   focusRuntimeOrchestrationTask,
-  ORCHESTRATION_TASK_PREFIX
+  ORCHESTRATION_TASK_PREFIX,
+  resolveRuntimeOrchestrationTask
 } from './terminal-orchestration-task-links'
 
 export { extractOrchestrationTaskLinks } from './terminal-orchestration-task-links'
@@ -192,11 +193,15 @@ export function createTerminalHandleLinkProvider(
                 return
               }
               event?.preventDefault()
-              void activateParsedLink(parsed, deps.getRuntimeEnvironmentId())
+              void activateParsedLink(
+                parsed,
+                deps.getRuntimeEnvironmentId(),
+                parsed.kind === 'task' && Boolean(event?.shiftKey)
+              )
               terminal.clearSelection()
             },
             hover: () => {
-              deps.linkTooltip.textContent = `${parsed.text} (${getTerminalHandleFocusHint()})`
+              deps.linkTooltip.textContent = `${parsed.text} (${getTerminalHandleFocusHint(parsed.kind)})`
               deps.linkTooltip.style.display = ''
             },
             leave: () => {
@@ -213,13 +218,29 @@ export function createTerminalHandleLinkProvider(
 
 async function activateParsedLink(
   parsed: { kind: 'terminal' | 'task'; text: string },
-  runtimeEnvironmentId: string | null
+  runtimeEnvironmentId: string | null,
+  openTaskInConsole: boolean
 ): Promise<void> {
   try {
     if (parsed.kind === 'terminal') {
       if (!focusRendererTerminalHandle(parsed.text, runtimeEnvironmentId)) {
         await focusRuntimeTerminalHandle(parsed.text, runtimeEnvironmentId)
       }
+      return
+    }
+    if (openTaskInConsole) {
+      const result = await resolveRuntimeOrchestrationTask(parsed.text, runtimeEnvironmentId)
+      const runId = result.dispatch?.run_id?.trim()
+      if (!runId) {
+        throw new Error(`No orchestration run found for task ${parsed.text}`)
+      }
+      const store = useAppStore.getState()
+      store.setRunConsoleRuntimeTargetKey(
+        runtimeEnvironmentId?.trim() ? `environment:${runtimeEnvironmentId.trim()}` : 'local'
+      )
+      store.setRunConsoleSelectedRunId(runId)
+      store.setRunConsoleSelectedTaskId(parsed.text)
+      store.openRunsPage()
       return
     }
     // Why: a task can be retried onto a new dispatch; runtime DB is the
@@ -252,10 +273,11 @@ function ptyIdMatchesTerminalHandle(
   return ptyEnvironmentId === targetEnvironmentId
 }
 
-function getTerminalHandleFocusHint(): string {
-  return navigator.userAgent.includes('Mac')
-    ? '⌘+click to switch terminal'
-    : 'Ctrl+click to switch terminal'
+function getTerminalHandleFocusHint(kind: 'terminal' | 'task'): string {
+  const modifier = navigator.userAgent.includes('Mac') ? '⌘' : 'Ctrl'
+  return kind === 'task'
+    ? `${modifier}+click terminal, ${modifier}+Shift+click Run Console`
+    : `${modifier}+click to switch terminal`
 }
 
 function isTerminalHandleLinkActivation(

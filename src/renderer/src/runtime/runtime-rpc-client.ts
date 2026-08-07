@@ -54,6 +54,7 @@ export async function callRuntimeRpc<TResult>(
     skipCompatibilityCheck?: boolean
     signal?: AbortSignal
     expectedEnvironmentPairingRevision?: number
+    orchestrationRequestId?: string
   } = {}
 ): Promise<TResult> {
   const expectedEnvironmentPairingRevision =
@@ -63,6 +64,7 @@ export async function callRuntimeRpc<TResult>(
           options.expectedEnvironmentPairingRevision
         )
       : undefined
+  const { orchestrationRequestId } = options
   if (
     target.kind === 'environment' &&
     method !== 'status.get' &&
@@ -81,13 +83,14 @@ export async function callRuntimeRpc<TResult>(
     : params
   const response =
     target.kind === 'local'
-      ? await window.api.runtime.call({ method, params: nextParams })
+      ? await window.api.runtime.call({ method, params: nextParams, orchestrationRequestId })
       : await callRuntimeEnvironmentWithRevision({
           environmentId: target.environmentId,
           method,
           params: nextParams,
           timeoutMs: options.timeoutMs,
           signal: options.signal,
+          orchestrationRequestId,
           expectedEnvironmentPairingRevision
         })
   return unwrapRuntimeRpcResult<TResult>(response as RuntimeRpcResponse<TResult>)

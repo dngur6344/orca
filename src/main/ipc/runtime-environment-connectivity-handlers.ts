@@ -13,6 +13,7 @@ import { RemoteRuntimeClientError } from '../../shared/remote-runtime-client-err
 import { RuntimeRpcCallQueueOverloadError } from '../../shared/runtime-rpc-call-queue'
 import type { RuntimeRpcFailure, RuntimeRpcResponse } from '../../shared/runtime-rpc-envelope'
 import type { RuntimeStatus } from '../../shared/runtime-types'
+import { ORCHESTRATION_CONTRACT_VERSION } from '../../shared/protocol-version'
 import type { Store } from '../persistence'
 import { verifyAndAddRuntimeEnvironmentFromPairingCode } from './runtime-environment-pairing-verification'
 import { closeRemoteRuntimeRequestConnection } from './runtime-environment-request-connections'
@@ -182,6 +183,7 @@ function registerPassiveCallHandler(getUserDataPath: () => string): void {
         method: string
         params?: unknown
         timeoutMs?: number
+        orchestrationRequestId?: string
         expectedEnvironmentPairingRevision?: number
       }
     ): Promise<RuntimeRpcResponse<unknown>> => {
@@ -197,7 +199,13 @@ function registerPassiveCallHandler(getUserDataPath: () => string): void {
           args.method,
           args.params,
           args.timeoutMs,
-          args.expectedEnvironmentPairingRevision
+          args.expectedEnvironmentPairingRevision,
+          args.orchestrationRequestId
+            ? {
+                orchestrationRequestId: args.orchestrationRequestId,
+                orchestrationContractVersion: ORCHESTRATION_CONTRACT_VERSION
+              }
+            : undefined
         )
       } catch (error) {
         const failure = runtimeEnvironmentCallFailure(environment, args.method, error)

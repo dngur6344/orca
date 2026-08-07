@@ -8,6 +8,13 @@ export type ParsedOrchestrationTaskLink = {
 
 export const ORCHESTRATION_TASK_PREFIX = 'task_'
 
+export type RuntimeOrchestrationTaskDispatch = {
+  id?: string
+  run_id?: string
+  task_id?: string
+  assignee_handle?: string | null
+}
+
 const MAX_ORCHESTRATION_TASK_TOKEN_LENGTH = 128
 const ORCHESTRATION_TASK_BOUNDARY_CHAR = /[A-Za-z0-9_-]/
 
@@ -52,13 +59,7 @@ export async function focusRuntimeOrchestrationTask(
   runtimeEnvironmentId: string | null,
   focusRendererTerminal?: (handle: string) => boolean
 ): Promise<void> {
-  const environmentId = runtimeEnvironmentId?.trim()
-  const target = environmentId
-    ? ({ kind: 'environment', environmentId } as const)
-    : ({ kind: 'local' } as const)
-  const result = await callRuntimeRpc<{
-    dispatch: { assignee_handle?: string | null } | null
-  }>(target, 'orchestration.dispatchShow', { task: taskId })
+  const result = await resolveRuntimeOrchestrationTask(taskId, runtimeEnvironmentId)
   const terminal = result.dispatch?.assignee_handle?.trim()
   if (!terminal) {
     throw new Error(`No dispatched terminal for orchestration task ${taskId}`)
@@ -66,9 +67,24 @@ export async function focusRuntimeOrchestrationTask(
   if (focusRendererTerminal?.(terminal)) {
     return
   }
+  const environmentId = runtimeEnvironmentId?.trim()
+  const target = environmentId
+    ? ({ kind: 'environment', environmentId } as const)
+    : ({ kind: 'local' } as const)
   // Why: task IDs are stable orchestration DB records, but terminal.focus owns
   // the app-side navigation contract for local and SSH runtime terminals.
   await callRuntimeRpc(target, 'terminal.focus', { terminal, navigation: 'host' })
+}
+
+export function resolveRuntimeOrchestrationTask(
+  taskId: string,
+  runtimeEnvironmentId: string | null
+): Promise<{ dispatch: RuntimeOrchestrationTaskDispatch | null }> {
+  const environmentId = runtimeEnvironmentId?.trim()
+  const target = environmentId
+    ? ({ kind: 'environment', environmentId } as const)
+    : ({ kind: 'local' } as const)
+  return callRuntimeRpc(target, 'orchestration.dispatchShow', { task: taskId })
 }
 
 function findOrchestrationTaskTokenEnd(lineText: string, startIndex: number): number {

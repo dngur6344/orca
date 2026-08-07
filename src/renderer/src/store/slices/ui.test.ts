@@ -2522,6 +2522,67 @@ describe('createUISlice page navigation history', () => {
     expect(store.getState().activeView).toBe('terminal')
     expect(store.getState().worktreeNavHistoryIndex).toBe(0)
   })
+
+  it('records, dedupes, and rewinds Runs visits on close', () => {
+    const store = createUIStore()
+    store.setState({ worktreesByRepo: { 'repo-1': [makeWorktree('a')] } })
+    store.getState().recordWorktreeVisit('a')
+
+    store.getState().openRunsPage()
+    store.getState().openRunsPage()
+
+    expect(store.getState().activeView).toBe('runs')
+    expect(store.getState().worktreeNavHistory).toEqual(['a', 'runs'])
+    store.getState().closeRunsPage()
+    expect(store.getState().activeView).toBe('terminal')
+    expect(store.getState().worktreeNavHistoryIndex).toBe(0)
+  })
+
+  it('returns from Runs to the originating Tasks view', () => {
+    const store = createUIStore()
+    store.getState().openTaskPage()
+    store.getState().openRunsPage()
+
+    store.getState().closeRunsPage()
+
+    expect(store.getState().activeView).toBe('tasks')
+  })
+
+  it('persists and restores safe Run Console selection state', () => {
+    const setUI = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('window', { api: { ui: { set: setUI } } })
+    const store = createUIStore()
+
+    store.getState().setRunConsoleRuntimeTargetKey('environment:remote-1')
+    store.getState().setRunConsoleSelectedRunId('run-1')
+    store.getState().setRunConsoleSelectedTaskId('task-1')
+    store.getState().setRunConsoleViewMode('outline')
+
+    expect(store.getState()).toMatchObject({
+      runConsoleRuntimeTargetKey: 'environment:remote-1',
+      runConsoleSelectedRunId: 'run-1',
+      runConsoleSelectedTaskId: 'task-1',
+      runConsoleViewMode: 'outline'
+    })
+    const restored = createUIStore()
+    restored.getState().hydratePersistedUI(
+      makePersistedUI({
+        activeView: 'runs',
+        runConsoleRuntimeTargetKey: 'environment:remote-1',
+        runConsoleSelectedRunId: 'run-1',
+        runConsoleSelectedTaskId: 'task-1',
+        runConsoleViewMode: 'outline'
+      }),
+      'startup'
+    )
+    expect(restored.getState()).toMatchObject({
+      activeView: 'runs',
+      runConsoleRuntimeTargetKey: 'environment:remote-1',
+      runConsoleSelectedRunId: 'run-1',
+      runConsoleSelectedTaskId: 'task-1',
+      runConsoleViewMode: 'outline'
+    })
+  })
 })
 
 describe('createUISlice feature tips', () => {

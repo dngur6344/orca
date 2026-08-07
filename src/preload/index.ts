@@ -4284,8 +4284,11 @@ const api = {
     syncWindowGraph: (graph: RuntimeSyncWindowGraph): Promise<RuntimeSyncWindowGraphResult> =>
       ipcRenderer.invoke('runtime:syncWindowGraph', graph),
     getStatus: (): Promise<RuntimeStatus> => ipcRenderer.invoke('runtime:getStatus'),
-    call: (args: { method: string; params?: unknown }): Promise<RuntimeRpcResponse<unknown>> =>
-      ipcRenderer.invoke('runtime:call', args),
+    call: (args: {
+      method: string
+      params?: unknown
+      orchestrationRequestId?: string
+    }): Promise<RuntimeRpcResponse<unknown>> => ipcRenderer.invoke('runtime:call', args),
     getTerminalFitOverrides: (): Promise<
       { ptyId: string; mode: 'mobile-fit' | 'remote-desktop-fit'; cols: number; rows: number }[]
     > => ipcRenderer.invoke('runtime:getTerminalFitOverrides'),
@@ -4402,6 +4405,7 @@ const api = {
       method: string
       params?: unknown
       timeoutMs?: number
+      orchestrationRequestId?: string
       expectedEnvironmentPairingRevision?: number
     }): Promise<RuntimeRpcResponse<unknown>> =>
       ipcRenderer.invoke('runtimeEnvironments:call', args),
