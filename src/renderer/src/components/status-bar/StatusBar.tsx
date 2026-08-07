@@ -94,6 +94,14 @@ import {
   selectClaudeProviderAccount,
   selectCodexProviderAccount
 } from '@/runtime/runtime-provider-accounts-client'
+import {
+  resolveClaudeStatusAccountState,
+  resolveCodexStatusAccountState
+} from './status-bar-provider-accounts'
+export {
+  resolveClaudeStatusAccountState,
+  resolveCodexStatusAccountState
+} from './status-bar-provider-accounts'
 import { translate } from '@/i18n/i18n'
 import {
   getDisplayedUsagePercentage,
@@ -112,6 +120,9 @@ type StatusBarProps = {
 
 const PetStatusSegment = lazyWithRetry(() =>
   import('./PetStatusSegment').then((module) => ({ default: module.PetStatusSegment }))
+)
+const AgentStatusSegment = lazyWithRetry(() =>
+  import('./AgentStatusSegment').then((module) => ({ default: module.AgentStatusSegment }))
 )
 const ResourceUsageStatusSegment = lazyWithRetry(() =>
   import('./ResourceUsageStatusSegment').then((module) => ({
@@ -349,41 +360,6 @@ export function buildCodexStatusSwitchGroups(
   return groups
 }
 
-function getCodexStatusAccountsFromSettings(
-  settings: GlobalSettings | null | undefined
-): CodexRateLimitAccountsState | null {
-  if (!settings) {
-    return null
-  }
-  return {
-    accounts: settings.codexManagedAccounts
-      .map((account) => ({
-        id: account.id,
-        email: account.email,
-        managedHomeRuntime: account.managedHomeRuntime ?? 'host',
-        wslDistro: account.wslDistro ?? null,
-        providerAccountId: account.providerAccountId ?? null,
-        workspaceLabel: account.workspaceLabel ?? null,
-        workspaceAccountId: account.workspaceAccountId ?? null,
-        createdAt: account.createdAt,
-        updatedAt: account.updatedAt,
-        lastAuthenticatedAt: account.lastAuthenticatedAt
-      }))
-      .sort((a, b) => b.updatedAt - a.updatedAt),
-    activeAccountId:
-      settings.activeCodexManagedAccountIdsByRuntime?.host ??
-      settings.activeCodexManagedAccountId ??
-      null,
-    activeAccountIdsByRuntime: {
-      host:
-        settings.activeCodexManagedAccountIdsByRuntime?.host ??
-        settings.activeCodexManagedAccountId ??
-        null,
-      wsl: { ...settings.activeCodexManagedAccountIdsByRuntime?.wsl }
-    }
-  }
-}
-
 function getSingleConcreteClaudeWslDistro(state: ClaudeRateLimitAccountsState): string | null {
   const keys = new Set<string>()
   for (const [key, accountId] of Object.entries(state.activeAccountIdsByRuntime?.wsl ?? {})) {
@@ -506,62 +482,6 @@ export function buildClaudeStatusSwitchGroups(
   }
 
   return groups
-}
-
-function getClaudeStatusAccountsFromSettings(
-  settings: GlobalSettings | null | undefined
-): ClaudeRateLimitAccountsState | null {
-  if (!settings) {
-    return null
-  }
-  return {
-    accounts: settings.claudeManagedAccounts
-      .map((account) => ({
-        id: account.id,
-        email: account.email,
-        managedAuthRuntime: account.managedAuthRuntime ?? 'host',
-        wslDistro: account.wslDistro ?? null,
-        authMethod: account.authMethod ?? 'unknown',
-        organizationUuid: account.organizationUuid ?? null,
-        organizationName: account.organizationName ?? null,
-        createdAt: account.createdAt,
-        updatedAt: account.updatedAt,
-        lastAuthenticatedAt: account.lastAuthenticatedAt
-      }))
-      .sort((a, b) => b.updatedAt - a.updatedAt),
-    activeAccountId:
-      settings.activeClaudeManagedAccountIdsByRuntime?.host ??
-      settings.activeClaudeManagedAccountId ??
-      null,
-    activeAccountIdsByRuntime: {
-      host:
-        settings.activeClaudeManagedAccountIdsByRuntime?.host ??
-        settings.activeClaudeManagedAccountId ??
-        null,
-      wsl: { ...settings.activeClaudeManagedAccountIdsByRuntime?.wsl }
-    }
-  }
-}
-
-// Why: with a Remote Orca Server, local GlobalSettings describe this desktop, not the owner — the server snapshot wins (#7973).
-export function resolveCodexStatusAccountState(
-  settings: GlobalSettings | null | undefined,
-  runtimeState: CodexRateLimitAccountsState
-): CodexRateLimitAccountsState {
-  if (settings?.activeRuntimeEnvironmentId?.trim()) {
-    return runtimeState
-  }
-  return getCodexStatusAccountsFromSettings(settings) ?? runtimeState
-}
-
-export function resolveClaudeStatusAccountState(
-  settings: GlobalSettings | null | undefined,
-  runtimeState: ClaudeRateLimitAccountsState
-): ClaudeRateLimitAccountsState {
-  if (settings?.activeRuntimeEnvironmentId?.trim()) {
-    return runtimeState
-  }
-  return getClaudeStatusAccountsFromSettings(settings) ?? runtimeState
 }
 
 function CodexRestartStatusPrompt(): React.JSX.Element | null {
@@ -2353,6 +2273,7 @@ function StatusBarInner({ floatingTerminalOpen }: StatusBarProps): React.JSX.Ele
         <SkillUpdateStatusSegment iconOnly={iconOnly} />
         <UpdateStatusSegment compact={compact} iconOnly={iconOnly} />
         <React.Suspense fallback={null}>
+          <AgentStatusSegment compact={compact} iconOnly={iconOnly} />
           {petEnabled ? <PetStatusSegment /> : null}
           {showResourceUsage ? (
             <ResourceUsageStatusSegment compact={compact} iconOnly={iconOnly} />
