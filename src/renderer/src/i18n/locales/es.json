@@ -134,7 +134,7 @@
       "ce37cf5279": "Alternar barra lateral ({{value0}})",
       "e4b9e7dff7": "Alternar barra lateral",
       "pluginCommandFailed": "No se pudo ejecutar el comando del plugin.",
-      "standaloneTerminalHomeResolutionFailed": "No se pudo abrir la terminal porque no se pudo determinar el directorio principal."
+      "standaloneTerminalHomeResolutionFailed": "No se pudo abrir la terminal porque no se pudo determinar el directorio de inicio."
     },
     "web": {
       "WebConnect": {
