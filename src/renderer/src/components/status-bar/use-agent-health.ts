@@ -106,7 +106,10 @@ export function useAgentHealth(
   const legacyPendingRef = useRef(new Map<string, Promise<AgentHealthSnapshot[]>>())
   const mountedRef = useRef(true)
   const updatePendingRef = useRef(new Map<string, Promise<AgentUpdateResult | null>>())
-  targetKeyRef.current = targetKey
+
+  useEffect(() => {
+    targetKeyRef.current = targetKey
+  }, [targetKey])
 
   useEffect(() => {
     mountedRef.current = true

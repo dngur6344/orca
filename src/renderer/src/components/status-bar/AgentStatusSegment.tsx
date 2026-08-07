@@ -1,5 +1,5 @@
 import { Bot, Loader2 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -123,6 +123,10 @@ export function AgentStatusSegment({
     () => getCodexStatusAccountsFromSettings(settings) ?? EMPTY_CODEX_ACCOUNTS,
     [settings]
   )
+  const localAccountFallbacksRef = useRef({
+    claude: localClaudeAccounts,
+    codex: localCodexAccounts
+  })
   const accountOwnerKey = activeRuntimeEnvironmentId
     ? `runtime:${activeRuntimeEnvironmentId}`
     : `local:${localAccountSyncKey(localClaudeAccounts, localCodexAccounts)}`
@@ -153,6 +157,13 @@ export function AgentStatusSegment({
   const [manualRefreshPending, setManualRefreshPending] = useState(false)
 
   useEffect(() => {
+    localAccountFallbacksRef.current = {
+      claude: localClaudeAccounts,
+      codex: localCodexAccounts
+    }
+  }, [localClaudeAccounts, localCodexAccounts])
+
+  useEffect(() => {
     setSnapshot(null)
     setAccountLoadError(false)
     const watcher = watchProviderAccounts(
@@ -162,10 +173,10 @@ export function AgentStatusSegment({
           setSnapshot((previous) => ({
             ...next,
             claude: next.failedProviders?.includes('claude')
-              ? (previous?.claude ?? localClaudeAccounts)
+              ? (previous?.claude ?? localAccountFallbacksRef.current.claude)
               : next.claude,
             codex: next.failedProviders?.includes('codex')
-              ? (previous?.codex ?? localCodexAccounts)
+              ? (previous?.codex ?? localAccountFallbacksRef.current.codex)
               : next.codex
           }))
           setAccountLoadError(Boolean(next.failedProviders?.length))
@@ -174,13 +185,7 @@ export function AgentStatusSegment({
       }
     )
     return watcher.close
-  }, [
-    accountOwnerKey,
-    activeRuntimeEnvironmentId,
-    localClaudeAccounts,
-    localCodexAccounts,
-    refreshGeneration
-  ])
+  }, [accountOwnerKey, activeRuntimeEnvironmentId, refreshGeneration])
 
   useEffect(() => {
     if (!detectionTargetReady) {
@@ -322,7 +327,7 @@ export function AgentStatusSegment({
           loadError={loadError}
           onModeChange={setStatusBarUsageMode}
           onRefresh={() => void refresh()}
-          onCheckAgent={(provider) => void checkAgentHealth(provider)}
+          onCheckAgent={(provider) => void checkAgentHealth(provider).catch(() => {})}
           onUpdateAgent={(provider) => void updateAgent(provider)}
           onManageAccounts={() => {
             openSettingsTarget({ pane: 'accounts', repoId: null })

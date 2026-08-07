@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import type { AgentProviderReadiness } from './agent-readiness'
 import type { AgentHealthSnapshot } from '../../../../shared/agent-health'
+import type { AgentUpdateUiState } from './use-agent-health'
 
 vi.mock('@/i18n/i18n', () => ({
   translate: (_key: string, fallback: string) => fallback
@@ -76,13 +77,16 @@ const healthSnapshots: AgentHealthSnapshot[] = [
   }
 ]
 
-function renderPanel(mode: 'verbose' | 'compact'): string {
+function renderPanel(
+  mode: 'verbose' | 'compact',
+  updateStates: Partial<Record<'claude' | 'codex', AgentUpdateUiState>> = {}
+): string {
   return renderToStaticMarkup(
     <AgentStatusPanel
       providers={providers}
       healthSnapshots={healthSnapshots}
       healthPendingProviders={{}}
-      updateStates={{}}
+      updateStates={updateStates}
       mode={mode}
       ownerLabel="This device"
       isRefreshing={false}
@@ -125,5 +129,12 @@ describe('AgentStatusPanel', () => {
     expect(markup).not.toContain('Network check failed')
     expect(markup).not.toContain('CLI: Passed')
     expect(markup).toContain('Temporary issue')
+  })
+
+  it.each([
+    [{ status: 'updating', version: null }, 'Updating…'],
+    [{ status: 'failed', version: null }, 'Update failed']
+  ] as const)('shows the %s update state', (updateState, expected) => {
+    expect(renderPanel('verbose', { claude: updateState })).toContain(expected)
   })
 })

@@ -3461,7 +3461,7 @@
             "latestVersion": "Última versión",
             "updateFailed": "Error de actualización",
             "updateAvailable": "v{{value0}} disponible",
-            "checkForUpdates": "Estado de actualización no disponible",
+            "updateStatusUnavailable": "Estado de actualización no disponible",
             "checkingForUpdates": "Buscando actualizaciones…",
             "checkNow": "Comprobar",
             "retryUpdate": "Reintentar",

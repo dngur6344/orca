@@ -43,13 +43,13 @@ describe('agent health presentation', () => {
     ).toBe('action-required')
   })
 
-  it('surfaces provider and websocket failures as degraded', () => {
+  it.each(['provider', 'websocket'] as const)('surfaces %s failures as degraded', (checkId) => {
     expect(
       getProviderConnectionState(
         readyProvider,
         snapshot({
           health: 'unhealthy',
-          checks: [{ id: 'provider', status: 'failed' }]
+          checks: [{ id: checkId, status: 'failed' }]
         }),
         false
       )

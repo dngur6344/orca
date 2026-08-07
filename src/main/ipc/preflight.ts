@@ -30,6 +30,15 @@ import {
   resolveDetectedTuiAgentIds
 } from './tui-agent-detection-commands'
 
+function parseAgentHealthProvider(args: unknown): AgentHealthProvider {
+  const provider =
+    typeof args === 'object' && args !== null && 'provider' in args ? args.provider : undefined
+  if (provider === 'claude' || provider === 'codex') {
+    return provider
+  }
+  throw new TypeError('Unsupported agent health provider')
+}
+
 export type PreflightStatus = {
   git: { installed: boolean }
   gh: { installed: boolean; authenticated: boolean }
@@ -304,18 +313,17 @@ export function registerPreflightHandlers(): void {
     return probeAgentHealth(args)
   })
 
-  ipcMain.handle(
-    'preflight:probeAgentHealthProvider',
-    async (_event, args: PreflightRuntimeContext & { provider: AgentHealthProvider }) =>
-      probeAgentProviderHealth(args.provider, args)
+  ipcMain.handle('preflight:probeAgentHealthProvider', async (_event, args: unknown) =>
+    probeAgentProviderHealth(
+      parseAgentHealthProvider(args),
+      args as PreflightRuntimeContext | undefined
+    )
   )
 
   ipcMain.handle(
     'preflight:updateAgent',
-    async (
-      _event,
-      args: PreflightRuntimeContext & { provider: AgentHealthProvider }
-    ): Promise<AgentUpdateResult> => updateAgent(args.provider, args)
+    async (_event, args: unknown): Promise<AgentUpdateResult> =>
+      updateAgent(parseAgentHealthProvider(args), args as PreflightRuntimeContext | undefined)
   )
 
   // Why: remote worktrees need agent detection on the SSH host, not the local

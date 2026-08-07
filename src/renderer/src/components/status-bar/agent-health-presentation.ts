@@ -1,18 +1,10 @@
 import type { AgentHealthSnapshot } from '../../../../shared/agent-health'
-import type {
-  AgentProviderReadiness,
-  AgentReadinessProvider,
-  AgentReadinessState
+import {
+  AGENT_READINESS_STATE_PRIORITY,
+  type AgentProviderReadiness,
+  type AgentReadinessProvider,
+  type AgentReadinessState
 } from './agent-readiness'
-
-const STATE_PRIORITY: Record<AgentReadinessState, number> = {
-  ready: 0,
-  unknown: 1,
-  checking: 2,
-  degraded: 3,
-  unavailable: 4,
-  'action-required': 5
-}
 
 export function getAgentHealthSnapshot(
   snapshots: readonly AgentHealthSnapshot[],
@@ -47,7 +39,10 @@ export function getProviderConnectionState(
     : healthPending
       ? 'checking'
       : 'unknown'
-  return STATE_PRIORITY[healthState] > STATE_PRIORITY[provider.state] ? healthState : provider.state
+  return AGENT_READINESS_STATE_PRIORITY[healthState] >
+    AGENT_READINESS_STATE_PRIORITY[provider.state]
+    ? healthState
+    : provider.state
 }
 
 export function getOverallAgentConnectionState(
@@ -61,6 +56,8 @@ export function getOverallAgentConnectionState(
       getAgentHealthSnapshot(snapshots, provider.provider),
       pendingProviders[provider.provider] === true
     )
-    return STATE_PRIORITY[state] > STATE_PRIORITY[current] ? state : current
+    return AGENT_READINESS_STATE_PRIORITY[state] > AGENT_READINESS_STATE_PRIORITY[current]
+      ? state
+      : current
   }, 'ready')
 }

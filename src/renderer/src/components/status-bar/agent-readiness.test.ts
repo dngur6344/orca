@@ -109,6 +109,32 @@ describe('buildAgentReadiness', () => {
     expect(providers.filter(shouldShowAgentReadiness)).toEqual([])
   })
 
+  it('keeps providers in checking state while empty CLI detection is pending', () => {
+    const providers = buildAgentReadiness({
+      claudeAccounts: {
+        accounts: [],
+        activeAccountId: null,
+        activeAccountIdsByRuntime: { host: null, wsl: {} }
+      },
+      codexAccounts: {
+        accounts: [],
+        activeAccountId: null,
+        activeAccountIdsByRuntime: { host: null, wsl: {} }
+      },
+      rateLimits: null,
+      detectedAgentIds: [],
+      detectionPending: true,
+      systemDefaultLabel: 'System default'
+    })
+
+    expect(providers.filter(shouldShowAgentReadiness)).toHaveLength(2)
+    expect(providers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ installed: null, state: 'checking', reason: 'cli-checking' })
+      ])
+    )
+  })
+
   it('uses the active account for the provider summary without promoting unchecked inactive accounts', () => {
     const [claude] = buildAgentReadiness({
       claudeAccounts,

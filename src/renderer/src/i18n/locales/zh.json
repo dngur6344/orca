@@ -3473,7 +3473,7 @@
             "latestVersion": "最新版本",
             "updateFailed": "更新失败",
             "updateAvailable": "v{{value0}} 可用",
-            "checkForUpdates": "无法获取更新状态",
+            "updateStatusUnavailable": "无法获取更新状态",
             "checkingForUpdates": "正在检查更新…",
             "checkNow": "检查",
             "retryUpdate": "重试",

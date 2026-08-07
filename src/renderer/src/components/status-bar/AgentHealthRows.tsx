@@ -73,7 +73,7 @@ function checkDotClass(status: AgentHealthSnapshot['checks'][number]['status']):
   if (status === 'ok') {
     return 'bg-status-success'
   }
-  return status === 'warning' ? 'bg-yellow-500' : 'bg-destructive'
+  return status === 'warning' ? 'bg-status-warning' : 'bg-destructive'
 }
 
 function hasAvailableUpdate(snapshot: AgentHealthSnapshot): boolean {
@@ -121,7 +121,7 @@ function updateStatusLabel(
   return snapshot.updateAvailability === 'current'
     ? translate('auto.components.status.bar.AgentHealthRows.latestVersion', 'Latest version')
     : translate(
-        'auto.components.status.bar.AgentHealthRows.checkForUpdates',
+        'auto.components.status.bar.AgentHealthRows.updateStatusUnavailable',
         'Update status unavailable'
       )
 }

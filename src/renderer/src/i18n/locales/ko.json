@@ -3461,7 +3461,7 @@
             "latestVersion": "최신 버전",
             "updateFailed": "업데이트 실패",
             "updateAvailable": "v{{value0}} 사용 가능",
-            "checkForUpdates": "업데이트 상태 확인 불가",
+            "updateStatusUnavailable": "업데이트 상태 확인 불가",
             "checkingForUpdates": "업데이트 확인 중…",
             "checkNow": "확인",
             "retryUpdate": "다시 시도",

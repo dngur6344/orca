@@ -7,7 +7,11 @@ import type {
   NativeChatAppendedMessages
 } from '../../../preload/api-types'
 import type { RuntimeRpcResponse } from '../../../shared/runtime-rpc-envelope'
-import type { AgentHealthSnapshot, AgentUpdateResult } from '../../../shared/agent-health'
+import type {
+  AgentHealthProvider,
+  AgentHealthSnapshot,
+  AgentUpdateResult
+} from '../../../shared/agent-health'
 import { parseHostAccessLink } from '../../../shared/remote-pairing-address'
 import { verifyRemotePairingRuntimeStatus } from '../../../shared/remote-pairing-verification'
 import type { AiVaultListArgs, AiVaultListResult } from '../../../shared/ai-vault-types'
@@ -2799,6 +2803,18 @@ function createPreflightApi(): NonNullable<Partial<PreloadApi>['preflight']> {
     pathSource: 'sync_seed_only',
     pathFailureReason: 'spawn_error'
   }
+  const fallbackAgentHealth = (provider: AgentHealthProvider): AgentHealthSnapshot => ({
+    provider,
+    cliStatus: 'unavailable',
+    health: 'unknown',
+    version: null,
+    durationMs: 0,
+    checkedAt: 0,
+    checks: [],
+    latestVersion: null,
+    updateAvailability: 'unknown',
+    updateSupported: false
+  })
   type WindowsTerminalCapabilityBridgeResult = {
     wslAvailable: boolean
     wslDistros: string[]
@@ -2833,9 +2849,13 @@ function createPreflightApi(): NonNullable<Partial<PreloadApi>['preflight']> {
             .catch(() => fallbackRefreshAgents)
         : Promise.resolve(fallbackRefreshAgents),
     probeAgentHealth: (args) =>
-      callRuntimeResult<AgentHealthSnapshot[]>('preflight.probeAgentHealth', args, 35_000),
+      requireActiveEnvironmentOrNull()
+        ? callRuntimeResult<AgentHealthSnapshot[]>('preflight.probeAgentHealth', args, 35_000)
+        : Promise.resolve([]),
     probeAgentHealthProvider: (args) =>
-      callRuntimeResult<AgentHealthSnapshot>('preflight.probeAgentHealthProvider', args, 35_000),
+      requireActiveEnvironmentOrNull()
+        ? callRuntimeResult<AgentHealthSnapshot>('preflight.probeAgentHealthProvider', args, 35_000)
+        : Promise.resolve(fallbackAgentHealth(args.provider)),
     updateAgent: (args) =>
       callRuntimeResult<AgentUpdateResult>('preflight.updateAgent', args, 5 * 60_000 + 15_000),
     detectRemoteAgents: async (args) =>

@@ -22,6 +22,15 @@ export type AgentReadinessState =
   | 'unavailable'
   | 'unknown'
 
+export const AGENT_READINESS_STATE_PRIORITY: Readonly<Record<AgentReadinessState, number>> = {
+  ready: 0,
+  unknown: 1,
+  checking: 2,
+  degraded: 3,
+  unavailable: 4,
+  'action-required': 5
+}
+
 export type AgentReadinessReason =
   | 'ready'
   | 'refreshing'
@@ -302,17 +311,11 @@ export function shouldShowAgentReadiness(provider: AgentProviderReadiness): bool
 export function getOverallAgentReadiness(
   providers: readonly AgentProviderReadiness[]
 ): AgentReadinessState {
-  const priority: Record<AgentReadinessState, number> = {
-    ready: 0,
-    unknown: 1,
-    checking: 2,
-    degraded: 3,
-    unavailable: 4,
-    'action-required': 5
-  }
   return providers.reduce<AgentReadinessState>(
     (current, provider) =>
-      priority[provider.state] > priority[current] ? provider.state : current,
+      AGENT_READINESS_STATE_PRIORITY[provider.state] > AGENT_READINESS_STATE_PRIORITY[current]
+        ? provider.state
+        : current,
     'ready'
   )
 }

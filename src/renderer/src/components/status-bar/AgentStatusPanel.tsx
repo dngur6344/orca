@@ -113,7 +113,7 @@ export function agentReadinessDotClass(state: AgentReadinessState): string {
       return 'bg-status-success'
     case 'checking':
     case 'degraded':
-      return 'bg-yellow-500'
+      return 'bg-status-warning'
     case 'action-required':
       return 'bg-destructive'
     case 'unavailable':
@@ -128,7 +128,7 @@ export function agentReadinessToneClass(state: AgentReadinessState): string {
       return 'text-status-success'
     case 'checking':
     case 'degraded':
-      return 'text-yellow-500'
+      return 'text-status-warning'
     case 'action-required':
       return 'text-destructive'
     case 'unavailable':
