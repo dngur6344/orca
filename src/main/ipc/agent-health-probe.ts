@@ -2,8 +2,6 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import type {
   AgentHealthCheck,
-  AgentHealthCheckId,
-  AgentHealthCheckStatus,
   AgentHealthProvider,
   AgentHealthSnapshot,
   AgentHealthState,
@@ -18,17 +16,14 @@ import { getPreflightWslTarget, type PreflightRuntimeContext } from './preflight
 import { runPreflightCommandInWsl } from './preflight-wsl-command'
 import { shellQuote, type PreflightCommandResult } from './preflight-command-exec'
 import { resolveClaudeLatestVersion, type ClaudeUpdateChannel } from './agent-version-lookup'
+import { parseCodexDoctorReport } from './agent-codex-doctor-report'
+
+export { parseCodexDoctorChecks } from './agent-codex-doctor-report'
 
 const execFileAsync = promisify(execFile)
 const AGENT_HEALTH_TIMEOUT_MS = 12_000
 const AGENT_UPDATE_TIMEOUT_MS = 5 * 60_000
 const VERSION_PATTERN = /\d+\.\d+(?:\.\d+)?(?:[-+][\w.-]+)?/
-
-const CODEX_CHECK_IDS: Partial<Record<string, AgentHealthCheckId>> = {
-  'auth.credentials': 'authentication',
-  'network.provider_reachability': 'provider',
-  'network.websocket_reachability': 'websocket'
-}
 
 type CommandRunner = (
   provider: AgentHealthProvider,
@@ -43,11 +38,6 @@ type AgentCommandDependencies = {
   resolveClaudeVersion?: (channel: ClaudeUpdateChannel) => Promise<string | null>
 }
 
-type CodexDoctorReport = {
-  checks: AgentHealthCheck[]
-  latestVersion: string | null
-}
-
 function healthFromChecks(checks: readonly AgentHealthCheck[]): AgentHealthState {
   if (checks.some((check) => check.status === 'failed')) {
     return 'unhealthy'
@@ -56,48 +46,6 @@ function healthFromChecks(checks: readonly AgentHealthCheck[]): AgentHealthState
     return 'degraded'
   }
   return checks.length > 0 ? 'healthy' : 'unknown'
-}
-
-function normalizedCheckStatus(value: unknown): AgentHealthCheckStatus | null {
-  if (value === 'ok') {
-    return 'ok'
-  }
-  if (value === 'warning') {
-    return 'warning'
-  }
-  return value === 'fail' ? 'failed' : null
-}
-
-function parseCodexDoctorReport(output: string): CodexDoctorReport | null {
-  try {
-    const report = JSON.parse(output) as {
-      checks?: { id?: unknown; status?: unknown; details?: unknown }[]
-    }
-    if (!Array.isArray(report.checks)) {
-      return null
-    }
-    const checks = report.checks.flatMap((check) => {
-      const id = typeof check.id === 'string' ? CODEX_CHECK_IDS[check.id] : undefined
-      const status = normalizedCheckStatus(check.status)
-      return id && status ? [{ id, status }] : []
-    })
-    const updateDetails = report.checks.find((check) => check.id === 'updates.status')?.details
-    const rawLatestVersion =
-      updateDetails && typeof updateDetails === 'object' && 'latest version' in updateDetails
-        ? updateDetails['latest version']
-        : null
-    const latestVersion =
-      typeof rawLatestVersion === 'string'
-        ? (rawLatestVersion.match(VERSION_PATTERN)?.[0] ?? null)
-        : null
-    return { checks, latestVersion }
-  } catch {
-    return null
-  }
-}
-
-export function parseCodexDoctorChecks(output: string): AgentHealthCheck[] | null {
-  return parseCodexDoctorReport(output)?.checks ?? null
 }
 
 function versionFromOutput(result: PreflightCommandResult): string | null {

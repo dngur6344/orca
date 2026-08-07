@@ -43,17 +43,16 @@ describe('agent health probe', () => {
       }
       const error = Object.assign(new Error('doctor reported a failed check'), {
         stdout: JSON.stringify({
-          checks: [
-            { id: 'auth.credentials', status: 'ok' },
-            { id: 'network.provider_reachability', status: 'ok' },
-            { id: 'network.websocket_reachability', status: 'ok' },
-            { id: 'terminal.env', status: 'fail' },
-            {
-              id: 'updates.status',
+          checks: {
+            'auth.credentials': { status: 'ok' },
+            'network.provider_reachability': { status: 'ok' },
+            'network.websocket_reachability': { status: 'ok' },
+            'terminal.env': { status: 'fail' },
+            'updates.status': {
               status: 'warning',
               details: { 'latest version': '0.147.0' }
             }
-          ]
+          }
         })
       })
       throw error
