@@ -133,7 +133,8 @@
       "064bd07810": "戻る",
       "ce37cf5279": "サイドバーの切り替え ({{value0}})",
       "e4b9e7dff7": "サイドバーの切り替え",
-      "pluginCommandFailed": "プラグインのコマンドを実行できませんでした。"
+      "pluginCommandFailed": "プラグインのコマンドを実行できませんでした。",
+      "standaloneTerminalHomeResolutionFailed": "ホームディレクトリを特定できなかったため、ターミナルを開けませんでした。"
     },
     "web": {
       "WebConnect": {
@@ -5070,6 +5071,14 @@
           "3b7ea51793": "検索をクリア",
           "7f1c2e94a5": "検索テキストが長すぎます — ボードは絞り込まれていません",
           "9a4d0f6b21": "長すぎます"
+        },
+        "StandaloneTerminalSidebarSection": {
+          "terminalNumber": "ターミナル {{number}}",
+          "newTerminal": "新しいターミナル",
+          "terminals": "ターミナル",
+          "terminalList": "ターミナル一覧",
+          "renameTerminal": "ターミナル名を変更",
+          "renameNamedTerminal": "{{name}}の名前を変更"
         }
       },
       "shared": {
