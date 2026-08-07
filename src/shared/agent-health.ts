@@ -8,6 +8,10 @@ export type AgentHealthCheckId = 'cli' | 'authentication' | 'provider' | 'websoc
 
 export type AgentHealthCheckStatus = 'ok' | 'warning' | 'failed'
 
+export type AgentUpdateAvailability = 'available' | 'current' | 'unknown'
+
+export type AgentUpdateOutcome = 'updated' | 'current'
+
 export type AgentHealthCheck = {
   id: AgentHealthCheckId
   status: AgentHealthCheckStatus
@@ -21,4 +25,14 @@ export type AgentHealthSnapshot = {
   durationMs: number
   checkedAt: number
   checks: AgentHealthCheck[]
+  latestVersion?: string | null
+  updateAvailability?: AgentUpdateAvailability
+  updateSupported?: boolean
+}
+
+export type AgentUpdateResult = {
+  provider: AgentHealthProvider
+  outcome: AgentUpdateOutcome
+  previousVersion: string
+  currentVersion: string
 }

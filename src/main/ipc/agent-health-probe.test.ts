@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { parseCodexDoctorChecks, probeAgentHealth } from './agent-health-probe'
+import { parseCodexDoctorChecks, probeAgentHealth, updateAgent } from './agent-health-probe'
 
 describe('agent health probe', () => {
   it('keeps only connection-related Codex doctor checks', () => {
@@ -22,7 +22,7 @@ describe('agent health probe', () => {
     ])
   })
 
-  it('probes both CLIs but only runs the non-interactive doctor for Codex', async () => {
+  it('probes both CLIs and reads Codex update availability from doctor', async () => {
     const runCommand = vi.fn(async (provider: 'claude' | 'codex', args: string[]) => {
       if (args[0] === '--version') {
         return {
@@ -30,13 +30,21 @@ describe('agent health probe', () => {
           stderr: ''
         }
       }
+      if (args[0] === 'update') {
+        return { stdout: 'Update Codex or Claude Code', stderr: '' }
+      }
       const error = Object.assign(new Error('doctor reported a failed check'), {
         stdout: JSON.stringify({
           checks: [
             { id: 'auth.credentials', status: 'ok' },
             { id: 'network.provider_reachability', status: 'ok' },
             { id: 'network.websocket_reachability', status: 'ok' },
-            { id: 'terminal.env', status: 'fail' }
+            { id: 'terminal.env', status: 'fail' },
+            {
+              id: 'updates.status',
+              status: 'warning',
+              details: { 'latest version': '0.147.0' }
+            }
           ]
         })
       })
@@ -45,15 +53,22 @@ describe('agent health probe', () => {
 
     const snapshots = await probeAgentHealth(undefined, { runCommand })
 
-    expect(runCommand).toHaveBeenCalledTimes(3)
-    expect(runCommand).not.toHaveBeenCalledWith('claude', ['doctor'], undefined)
+    expect(runCommand).toHaveBeenCalledTimes(5)
+    expect(
+      runCommand.mock.calls.some(
+        ([provider, args]) => provider === 'claude' && args[0] === 'doctor'
+      )
+    ).toBe(false)
     expect(snapshots).toMatchObject([
       {
         provider: 'claude',
         cliStatus: 'available',
         health: 'healthy',
         version: '1.0.61',
-        checks: [{ id: 'cli', status: 'ok' }]
+        checks: [{ id: 'cli', status: 'ok' }],
+        latestVersion: null,
+        updateAvailability: 'unknown',
+        updateSupported: true
       },
       {
         provider: 'codex',
@@ -65,13 +80,16 @@ describe('agent health probe', () => {
           { id: 'authentication', status: 'ok' },
           { id: 'provider', status: 'ok' },
           { id: 'websocket', status: 'ok' }
-        ]
+        ],
+        latestVersion: '0.147.0',
+        updateAvailability: 'available',
+        updateSupported: true
       }
     ])
   })
 
   it('reports an unavailable CLI without attempting its deeper checks', async () => {
-    const runCommand = vi.fn(async (provider: 'claude' | 'codex') => {
+    const runCommand = vi.fn(async (provider: 'claude' | 'codex', _args: string[]) => {
       if (provider === 'codex') {
         throw new Error('not found')
       }
@@ -87,6 +105,34 @@ describe('agent health probe', () => {
       version: null,
       checks: [{ id: 'cli', status: 'failed' }]
     })
-    expect(runCommand).not.toHaveBeenCalledWith('codex', ['doctor', '--json'], undefined)
+    expect(
+      runCommand.mock.calls.some(([provider, args]) => provider === 'codex' && args[0] === 'doctor')
+    ).toBe(false)
+  })
+
+  it('runs the provider updater and reports the installed version change', async () => {
+    let versionCallCount = 0
+    const runCommand = vi.fn(async (_provider: 'claude' | 'codex', args: string[]) => {
+      if (args[0] === '--version') {
+        versionCallCount += 1
+        return {
+          stdout: versionCallCount === 1 ? 'codex-cli 0.146.1' : 'codex-cli 0.147.0',
+          stderr: ''
+        }
+      }
+      return { stdout: 'Updated successfully', stderr: '' }
+    })
+
+    await expect(updateAgent('codex', undefined, { runCommand })).resolves.toEqual({
+      provider: 'codex',
+      outcome: 'updated',
+      previousVersion: '0.146.1',
+      currentVersion: '0.147.0'
+    })
+    expect(runCommand.mock.calls.map(([, args]) => args)).toEqual([
+      ['--version'],
+      ['update'],
+      ['--version']
+    ])
   })
 })

@@ -11,7 +11,8 @@ import { detectWslCommandsOnPath, type WslPreflightTarget } from './preflight-ws
 import { detectCommandsInInstallDirs } from './local-agent-install-dir-detection'
 import { getPreflightWslTarget, type PreflightRuntimeContext } from './preflight-runtime-target'
 import { hydrateShellPathForAgentDetection } from './agent-detection-shell-path'
-import { probeAgentHealth } from './agent-health-probe'
+import { probeAgentHealth, updateAgent } from './agent-health-probe'
+import type { AgentHealthProvider, AgentUpdateResult } from '../../shared/agent-health'
 import {
   execCommandInWsl,
   execLocalPreflightCommand,
@@ -302,6 +303,14 @@ export function registerPreflightHandlers(): void {
   ipcMain.handle('preflight:probeAgentHealth', async (_event, args?: PreflightRuntimeContext) => {
     return probeAgentHealth(args)
   })
+
+  ipcMain.handle(
+    'preflight:updateAgent',
+    async (
+      _event,
+      args: PreflightRuntimeContext & { provider: AgentHealthProvider }
+    ): Promise<AgentUpdateResult> => updateAgent(args.provider, args)
+  )
 
   // Why: remote worktrees need agent detection on the SSH host, not the local
   // machine. This handler forwards the same KNOWN_AGENT_COMMANDS list to the

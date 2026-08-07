@@ -3456,7 +3456,15 @@
             "failed": "실패",
             "status": "상태",
             "health": "Health",
-            "probeDuration": "{{value0}}ms"
+            "updating": "업데이트 중…",
+            "updatedTo": "v{{value0}} 업데이트 완료",
+            "latestVersion": "최신 버전",
+            "updateFailed": "업데이트 실패",
+            "updateAvailable": "v{{value0}} 사용 가능",
+            "checkForUpdates": "업데이트 확인 필요",
+            "retryUpdate": "다시 시도",
+            "updateNow": "업데이트",
+            "checkAndUpdate": "확인 및 업데이트"
           },
           "AgentStatusPanel": {
             "ready": "준비됨",

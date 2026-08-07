@@ -7,7 +7,7 @@ import {
   refreshShellPathAndDetectAgents,
   runPreflightCheck
 } from '../../../ipc/preflight'
-import { probeAgentHealth } from '../../../ipc/agent-health-probe'
+import { probeAgentHealth, updateAgent } from '../../../ipc/agent-health-probe'
 
 const PreflightCheck = z.object({
   force: z.boolean().optional()
@@ -17,6 +17,9 @@ const PreflightDetectRemoteAgents = z.object({
 })
 const PreflightDetectRemoteWindowsTerminalCapabilities = z.object({
   connectionId: z.string().min(1)
+})
+const PreflightUpdateAgent = z.object({
+  provider: z.enum(['claude', 'codex'])
 })
 
 export const PREFLIGHT_METHODS: RpcMethod[] = [
@@ -49,5 +52,10 @@ export const PREFLIGHT_METHODS: RpcMethod[] = [
     name: 'preflight.probeAgentHealth',
     params: null,
     handler: async () => probeAgentHealth()
+  }),
+  defineMethod({
+    name: 'preflight.updateAgent',
+    params: PreflightUpdateAgent,
+    handler: async (params) => updateAgent(params.provider)
   })
 ]

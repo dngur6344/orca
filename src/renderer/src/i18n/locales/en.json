@@ -3593,7 +3593,15 @@
             "failed": "Failed",
             "status": "Status",
             "health": "Health",
-            "probeDuration": "{{value0}} ms"
+            "updating": "Updating…",
+            "updatedTo": "Updated to v{{value0}}",
+            "latestVersion": "Latest version",
+            "updateFailed": "Update failed",
+            "updateAvailable": "v{{value0}} available",
+            "checkForUpdates": "Check for updates",
+            "retryUpdate": "Retry",
+            "updateNow": "Update",
+            "checkAndUpdate": "Check & update"
           },
           "AgentStatusPanel": {
             "ready": "Ready",

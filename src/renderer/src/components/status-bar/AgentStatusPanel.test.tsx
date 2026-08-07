@@ -69,7 +69,10 @@ const healthSnapshots: AgentHealthSnapshot[] = [
     version: '1.0.61',
     durationMs: 42,
     checkedAt: 3,
-    checks: [{ id: 'cli', status: 'ok' }]
+    checks: [{ id: 'cli', status: 'ok' }],
+    latestVersion: null,
+    updateAvailability: 'unknown',
+    updateSupported: true
   }
 ]
 
@@ -79,12 +82,14 @@ function renderPanel(mode: 'verbose' | 'compact'): string {
       providers={providers}
       healthSnapshots={healthSnapshots}
       healthPending={false}
+      updateStates={{}}
       mode={mode}
       ownerLabel="This device"
       isRefreshing={false}
       loadError={false}
       onModeChange={() => {}}
       onRefresh={() => {}}
+      onUpdateAgent={() => {}}
       onManageAccounts={() => {}}
     />
   )
@@ -98,6 +103,9 @@ describe('AgentStatusPanel', () => {
     expect(markup).toContain('Health')
     expect(markup).toContain('Available')
     expect(markup).toContain('v1.0.61')
+    expect(markup).not.toContain('42 ms')
+    expect(markup).toContain('Check for updates')
+    expect(markup).toContain('Check &amp; update')
     expect(markup).toContain('CLI: Passed')
     expect(markup).toContain('active@claude.test')
     expect(markup).toContain('inactive@claude.test')

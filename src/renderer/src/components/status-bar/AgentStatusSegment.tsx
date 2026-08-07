@@ -140,7 +140,9 @@ export function AgentStatusSegment({
     snapshots: healthSnapshots,
     isProbing: healthPending,
     loadError: healthLoadError,
-    refresh: refreshAgentHealth
+    updateStates,
+    refresh: refreshAgentHealth,
+    update: updateAgent
   } = useAgentHealth(activeRuntimeEnvironmentId, detectionTargetReady)
   const [snapshot, setSnapshot] = useState<ProviderAccountsSnapshot | null>(null)
   const [accountLoadError, setAccountLoadError] = useState(false)
@@ -307,12 +309,14 @@ export function AgentStatusSegment({
           providers={providers}
           healthSnapshots={healthSnapshots}
           healthPending={healthPending}
+          updateStates={updateStates}
           mode={statusBarUsageMode}
           ownerLabel={ownerLabel}
           isRefreshing={isRefreshing}
           loadError={loadError}
           onModeChange={setStatusBarUsageMode}
           onRefresh={() => void refresh()}
+          onUpdateAgent={(provider) => void updateAgent(provider)}
           onManageAccounts={() => {
             openSettingsTarget({ pane: 'accounts', repoId: null })
             openSettingsPage()

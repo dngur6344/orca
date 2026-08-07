@@ -5,7 +5,7 @@ import { translate } from '@/i18n/i18n'
 import { ClaudeIcon, OpenAIIcon } from './icons'
 import { formatTimeAgo } from './tooltip'
 import type { StatusBarUsageMode } from '../../../../shared/status-bar-usage-mode'
-import type { AgentHealthSnapshot } from '../../../../shared/agent-health'
+import type { AgentHealthProvider, AgentHealthSnapshot } from '../../../../shared/agent-health'
 import type {
   AgentProviderReadiness,
   AgentReadinessReason,
@@ -13,6 +13,7 @@ import type {
 } from './agent-readiness'
 import { getAgentHealthSnapshot, getProviderConnectionState } from './agent-health-presentation'
 import { AgentHealthRows } from './AgentHealthRows'
+import type { AgentUpdateUiState } from './use-agent-health'
 
 export function agentReadinessStateLabel(state: AgentReadinessState): string {
   switch (state) {
@@ -159,12 +160,16 @@ function ProviderReadinessRows({
   provider,
   mode,
   healthSnapshots,
-  healthPending
+  healthPending,
+  updateStates,
+  onUpdateAgent
 }: {
   provider: AgentProviderReadiness
   mode: StatusBarUsageMode
   healthSnapshots: readonly AgentHealthSnapshot[]
   healthPending: boolean
+  updateStates: Partial<Record<AgentHealthProvider, AgentUpdateUiState>>
+  onUpdateAgent: (provider: AgentHealthProvider) => void
 }): React.JSX.Element {
   const healthSnapshot = getAgentHealthSnapshot(healthSnapshots, provider.provider)
   const connectionState = getProviderConnectionState(provider, healthSnapshot, healthPending)
@@ -195,6 +200,8 @@ function ProviderReadinessRows({
         connectionState={connectionState}
         pending={healthPending}
         mode={mode}
+        updateState={updateStates[provider.provider]}
+        onUpdate={onUpdateAgent}
       />
       <div className="pb-2">
         {accounts.map((account) => {
@@ -240,23 +247,27 @@ export function AgentStatusPanel({
   providers,
   healthSnapshots,
   healthPending,
+  updateStates,
   mode,
   ownerLabel,
   isRefreshing,
   loadError,
   onModeChange,
   onRefresh,
+  onUpdateAgent,
   onManageAccounts
 }: {
   providers: AgentProviderReadiness[]
   healthSnapshots: readonly AgentHealthSnapshot[]
   healthPending: boolean
+  updateStates: Partial<Record<AgentHealthProvider, AgentUpdateUiState>>
   mode: StatusBarUsageMode
   ownerLabel: string
   isRefreshing: boolean
   loadError: boolean
   onModeChange: (mode: StatusBarUsageMode) => void
   onRefresh: () => void
+  onUpdateAgent: (provider: AgentHealthProvider) => void
   onManageAccounts: () => void
 }): React.JSX.Element {
   return (
@@ -326,6 +337,8 @@ export function AgentStatusPanel({
             mode={mode}
             healthSnapshots={healthSnapshots}
             healthPending={healthPending}
+            updateStates={updateStates}
+            onUpdateAgent={onUpdateAgent}
           />
         ))}
       </div>

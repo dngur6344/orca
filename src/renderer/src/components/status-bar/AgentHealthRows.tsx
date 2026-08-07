@@ -1,8 +1,15 @@
-import type { AgentHealthCheckId, AgentHealthSnapshot } from '../../../../shared/agent-health'
+import { Loader2 } from 'lucide-react'
+import type {
+  AgentHealthCheckId,
+  AgentHealthProvider,
+  AgentHealthSnapshot
+} from '../../../../shared/agent-health'
 import type { StatusBarUsageMode } from '../../../../shared/status-bar-usage-mode'
 import { translate } from '@/i18n/i18n'
+import { Button } from '@/components/ui/button'
 import { formatTimeAgo } from './tooltip'
 import type { AgentReadinessState } from './agent-readiness'
+import type { AgentUpdateUiState } from './use-agent-health'
 
 function healthLabel(state: AgentReadinessState): string {
   switch (state) {
@@ -69,16 +76,80 @@ function checkDotClass(status: AgentHealthSnapshot['checks'][number]['status']):
   return status === 'warning' ? 'bg-yellow-500' : 'bg-destructive'
 }
 
+function updateStatusLabel(
+  snapshot: AgentHealthSnapshot,
+  updateState: AgentUpdateUiState | undefined
+): string {
+  switch (updateState?.status) {
+    case 'updating':
+      return translate('auto.components.status.bar.AgentHealthRows.updating', 'Updating…')
+    case 'updated':
+      return translate(
+        'auto.components.status.bar.AgentHealthRows.updatedTo',
+        'Updated to v{{value0}}',
+        { value0: updateState.version ?? snapshot.version ?? '' }
+      )
+    case 'current':
+      return translate('auto.components.status.bar.AgentHealthRows.latestVersion', 'Latest version')
+    case 'failed':
+      return translate('auto.components.status.bar.AgentHealthRows.updateFailed', 'Update failed')
+    case undefined:
+      break
+  }
+  if (snapshot.updateAvailability === 'available' && snapshot.latestVersion) {
+    return translate(
+      'auto.components.status.bar.AgentHealthRows.updateAvailable',
+      'v{{value0}} available',
+      { value0: snapshot.latestVersion }
+    )
+  }
+  return snapshot.updateAvailability === 'current'
+    ? translate('auto.components.status.bar.AgentHealthRows.latestVersion', 'Latest version')
+    : translate('auto.components.status.bar.AgentHealthRows.checkForUpdates', 'Check for updates')
+}
+
+function updateButtonLabel(
+  snapshot: AgentHealthSnapshot,
+  updateState: AgentUpdateUiState | undefined
+): string {
+  if (updateState?.status === 'updating') {
+    return translate('auto.components.status.bar.AgentHealthRows.updating', 'Updating…')
+  }
+  if (updateState?.status === 'failed') {
+    return translate('auto.components.status.bar.AgentHealthRows.retryUpdate', 'Retry')
+  }
+  return snapshot.updateAvailability === 'available'
+    ? translate('auto.components.status.bar.AgentHealthRows.updateNow', 'Update')
+    : translate('auto.components.status.bar.AgentHealthRows.checkAndUpdate', 'Check & update')
+}
+
+function shouldShowUpdateButton(
+  snapshot: AgentHealthSnapshot,
+  updateState: AgentUpdateUiState | undefined
+): boolean {
+  if (snapshot.updateSupported !== true) {
+    return false
+  }
+  if (updateState?.status === 'current' || updateState?.status === 'updated') {
+    return false
+  }
+  return snapshot.updateAvailability !== 'current'
+}
+
 export function AgentHealthRows({
   snapshot,
   connectionState,
   pending,
-  mode
+  mode,
+  updateState,
+  onUpdate
 }: {
   snapshot: AgentHealthSnapshot | null
   connectionState: AgentReadinessState
   pending: boolean
   mode: StatusBarUsageMode
+  updateState?: AgentUpdateUiState
+  onUpdate: (provider: AgentHealthProvider) => void
 }): React.JSX.Element {
   const checked = snapshot ? formatTimeAgo(snapshot.checkedAt) : null
   return (
@@ -103,19 +174,41 @@ export function AgentHealthRows({
         {snapshot?.version ? (
           <div className="col-span-2 flex min-w-0 items-center gap-1.5 text-[10px] text-muted-foreground">
             <span>v{snapshot.version}</span>
-            <span aria-hidden="true">·</span>
-            <span>
-              {translate(
-                'auto.components.status.bar.AgentHealthRows.probeDuration',
-                '{{value0}} ms',
-                { value0: snapshot.durationMs }
-              )}
-            </span>
             {checked ? (
               <>
                 <span aria-hidden="true">·</span>
                 <span>{checked}</span>
               </>
+            ) : null}
+          </div>
+        ) : null}
+        {snapshot &&
+        (snapshot.updateSupported === true ||
+          snapshot.updateAvailability === 'available' ||
+          snapshot.updateAvailability === 'current') ? (
+          <div className="col-span-2 mt-0.5 flex items-center justify-between gap-2 border-t border-border/70 pt-1.5">
+            <span
+              className={`text-[10px] ${updateState?.status === 'failed' ? 'text-destructive' : 'text-muted-foreground'}`}
+            >
+              {updateStatusLabel(snapshot, updateState)}
+            </span>
+            {shouldShowUpdateButton(snapshot, updateState) ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={updateState?.status === 'updating'}
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  onUpdate(snapshot.provider)
+                }}
+              >
+                {updateState?.status === 'updating' ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : null}
+                {updateButtonLabel(snapshot, updateState)}
+              </Button>
             ) : null}
           </div>
         ) : null}
