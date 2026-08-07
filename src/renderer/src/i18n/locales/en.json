@@ -3575,6 +3575,26 @@
               }
             }
           },
+          "AgentHealthRows": {
+            "healthy": "Healthy",
+            "checking": "Checking",
+            "actionRequired": "Action required",
+            "degraded": "Degraded",
+            "unavailable": "Unavailable",
+            "unknown": "Unknown",
+            "notChecked": "Not checked",
+            "available": "Available",
+            "cli": "CLI",
+            "authentication": "Authentication",
+            "provider": "Provider",
+            "websocket": "WebSocket",
+            "passed": "Passed",
+            "warning": "Warning",
+            "failed": "Failed",
+            "status": "Status",
+            "health": "Health",
+            "probeDuration": "{{value0}} ms"
+          },
           "AgentStatusPanel": {
             "ready": "Ready",
             "checking": "Checking",

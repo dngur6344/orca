@@ -374,6 +374,7 @@ import type {
   AgentStatusIpcPayload,
   MigrationUnsupportedPtyEntry
 } from '../shared/agent-status-types'
+import type { AgentHealthSnapshot } from '../shared/agent-health'
 import type { AgentInterruptInferenceRequest } from '../shared/agent-interrupt-intent'
 import type { AgentQuestionAnsweredInferenceRequest } from '../shared/agent-question-answered-intent'
 import type { TerminalSideEffectBatch } from '../shared/terminal-side-effect-facts'
@@ -743,6 +744,7 @@ export type PreflightApi = {
   check: (args?: PreflightRuntimeContext & { force?: boolean }) => Promise<PreflightStatus>
   detectAgents: (args?: PreflightRuntimeContext) => Promise<string[]>
   refreshAgents: (args?: PreflightRuntimeContext) => Promise<RefreshAgentsResult>
+  probeAgentHealth: (args?: PreflightRuntimeContext) => Promise<AgentHealthSnapshot[]>
   detectRemoteAgents: (args: { connectionId: string }) => Promise<string[]>
   detectRemoteWindowsTerminalCapabilities: (args: { connectionId: string }) => Promise<{
     wslAvailable: boolean

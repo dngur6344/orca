@@ -199,6 +199,7 @@ import type {
   AgentStatusIpcPayload,
   MigrationUnsupportedPtyEntry
 } from '../shared/agent-status-types'
+import type { AgentHealthSnapshot } from '../shared/agent-health'
 import type { AgentInterruptInferenceRequest } from '../shared/agent-interrupt-intent'
 import type { AgentQuestionAnsweredInferenceRequest } from '../shared/agent-question-answered-intent'
 import type { TerminalSideEffectBatch } from '../shared/terminal-side-effect-facts'
@@ -2181,6 +2182,8 @@ const api = {
       ipcRenderer.invoke('preflight:detectAgents', args),
     refreshAgents: (args?: PreflightRuntimeContext): Promise<RefreshAgentsResult> =>
       ipcRenderer.invoke('preflight:refreshAgents', args),
+    probeAgentHealth: (args?: PreflightRuntimeContext): Promise<AgentHealthSnapshot[]> =>
+      ipcRenderer.invoke('preflight:probeAgentHealth', args),
     detectRemoteAgents: (args: { connectionId: string }): Promise<string[]> =>
       ipcRenderer.invoke('preflight:detectRemoteAgents', args),
     detectRemoteWindowsTerminalCapabilities: (args: {

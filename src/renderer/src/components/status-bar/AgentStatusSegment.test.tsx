@@ -6,8 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => {
   const refreshDetectedAgents = vi.fn(async () => ['claude'])
+  const refreshAgentHealth = vi.fn(async () => [])
   return {
     refreshDetectedAgents,
+    refreshAgentHealth,
     watchProviderAccounts: vi.fn(() => ({ close: vi.fn() })),
     store: {
       settings: {
@@ -46,6 +48,14 @@ vi.mock('@/hooks/useDetectedAgents', () => ({
 }))
 vi.mock('@/runtime/runtime-provider-accounts-client', () => ({
   watchProviderAccounts: mocks.watchProviderAccounts
+}))
+vi.mock('./use-agent-health', () => ({
+  useAgentHealth: () => ({
+    snapshots: [],
+    isProbing: false,
+    loadError: false,
+    refresh: mocks.refreshAgentHealth
+  })
 }))
 vi.mock('@/i18n/i18n', () => ({
   translate: (_key: string, fallback: string) => fallback

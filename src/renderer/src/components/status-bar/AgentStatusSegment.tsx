@@ -18,10 +18,11 @@ import type {
 } from '../../../../shared/types'
 import {
   buildAgentReadiness,
-  getOverallAgentReadiness,
   shouldShowAgentReadiness,
   type AgentReadinessState
 } from './agent-readiness'
+import { getOverallAgentConnectionState } from './agent-health-presentation'
+import { useAgentHealth } from './use-agent-health'
 import {
   getClaudeStatusAccountsFromSettings,
   getCodexStatusAccountsFromSettings
@@ -135,6 +136,12 @@ export function AgentStatusSegment({
   }, [activeRuntimeEnvironmentId, settings])
   const detectedAgents = useDetectedAgents(detectionTarget)
   const refreshDetectedAgents = detectedAgents.refresh
+  const {
+    snapshots: healthSnapshots,
+    isProbing: healthPending,
+    loadError: healthLoadError,
+    refresh: refreshAgentHealth
+  } = useAgentHealth(activeRuntimeEnvironmentId, detectionTargetReady)
   const [snapshot, setSnapshot] = useState<ProviderAccountsSnapshot | null>(null)
   const [accountLoadError, setAccountLoadError] = useState(false)
   const [detectionLoadError, setDetectionLoadError] = useState(false)
@@ -205,8 +212,9 @@ export function AgentStatusSegment({
       'System default'
     )
   }).filter(shouldShowAgentReadiness)
-  const measuredOverall = getOverallAgentReadiness(providers)
-  const loadError = accountLoadError || detectionLoadError || detectedAgents.detectionFailed
+  const measuredOverall = getOverallAgentConnectionState(providers, healthSnapshots, healthPending)
+  const loadError =
+    accountLoadError || detectionLoadError || detectedAgents.detectionFailed || healthLoadError
   const overall =
     loadError && ['ready', 'unknown', 'checking'].includes(measuredOverall)
       ? 'degraded'
@@ -216,6 +224,7 @@ export function AgentStatusSegment({
     manualRefreshPending ||
     detectedAgents.isRefreshing ||
     detectedAgents.isLoading ||
+    healthPending ||
     anyProviderFetching
   const ownerLabel = activeRuntimeEnvironmentId
     ? (runtimeEnvironments.find((environment) => environment.id === activeRuntimeEnvironmentId)
@@ -231,6 +240,7 @@ export function AgentStatusSegment({
     try {
       const requests = [
         refreshDetectedAgents(),
+        refreshAgentHealth(),
         ...(activeRuntimeEnvironmentId
           ? []
           : [
@@ -250,6 +260,7 @@ export function AgentStatusSegment({
     fetchInactiveClaudeAccountUsage,
     fetchInactiveCodexAccountUsage,
     manualRefreshPending,
+    refreshAgentHealth,
     refreshDetectedAgents,
     refreshRateLimits
   ])
@@ -294,6 +305,8 @@ export function AgentStatusSegment({
       >
         <AgentStatusPanel
           providers={providers}
+          healthSnapshots={healthSnapshots}
+          healthPending={healthPending}
           mode={statusBarUsageMode}
           ownerLabel={ownerLabel}
           isRefreshing={isRefreshing}

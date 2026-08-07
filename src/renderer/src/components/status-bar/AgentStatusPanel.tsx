@@ -5,11 +5,14 @@ import { translate } from '@/i18n/i18n'
 import { ClaudeIcon, OpenAIIcon } from './icons'
 import { formatTimeAgo } from './tooltip'
 import type { StatusBarUsageMode } from '../../../../shared/status-bar-usage-mode'
+import type { AgentHealthSnapshot } from '../../../../shared/agent-health'
 import type {
   AgentProviderReadiness,
   AgentReadinessReason,
   AgentReadinessState
 } from './agent-readiness'
+import { getAgentHealthSnapshot, getProviderConnectionState } from './agent-health-presentation'
+import { AgentHealthRows } from './AgentHealthRows'
 
 export function agentReadinessStateLabel(state: AgentReadinessState): string {
   switch (state) {
@@ -154,11 +157,17 @@ function checkedLabel(checkedAt: number | null): string | null {
 
 function ProviderReadinessRows({
   provider,
-  mode
+  mode,
+  healthSnapshots,
+  healthPending
 }: {
   provider: AgentProviderReadiness
   mode: StatusBarUsageMode
+  healthSnapshots: readonly AgentHealthSnapshot[]
+  healthPending: boolean
 }): React.JSX.Element {
+  const healthSnapshot = getAgentHealthSnapshot(healthSnapshots, provider.provider)
+  const connectionState = getProviderConnectionState(provider, healthSnapshot, healthPending)
   const accounts =
     mode === 'compact'
       ? provider.activeAccount
@@ -175,12 +184,18 @@ function ProviderReadinessRows({
           {providerLabel(provider.provider)}
         </span>
         <span
-          className={`ml-auto inline-flex items-center gap-1.5 text-[11px] ${agentReadinessToneClass(provider.state)}`}
+          className={`ml-auto inline-flex items-center gap-1.5 text-[11px] ${agentReadinessToneClass(connectionState)}`}
         >
-          <span className={`size-1.5 rounded-full ${agentReadinessDotClass(provider.state)}`} />
-          {agentReadinessStateLabel(provider.state)}
+          <span className={`size-1.5 rounded-full ${agentReadinessDotClass(connectionState)}`} />
+          {agentReadinessStateLabel(connectionState)}
         </span>
       </div>
+      <AgentHealthRows
+        snapshot={healthSnapshot}
+        connectionState={connectionState}
+        pending={healthPending}
+        mode={mode}
+      />
       <div className="pb-2">
         {accounts.map((account) => {
           const checked = checkedLabel(account.checkedAt)
@@ -223,6 +238,8 @@ function ProviderReadinessRows({
 
 export function AgentStatusPanel({
   providers,
+  healthSnapshots,
+  healthPending,
   mode,
   ownerLabel,
   isRefreshing,
@@ -232,6 +249,8 @@ export function AgentStatusPanel({
   onManageAccounts
 }: {
   providers: AgentProviderReadiness[]
+  healthSnapshots: readonly AgentHealthSnapshot[]
+  healthPending: boolean
   mode: StatusBarUsageMode
   ownerLabel: string
   isRefreshing: boolean
@@ -301,7 +320,13 @@ export function AgentStatusPanel({
       ) : null}
       <div className="max-h-[320px] overflow-y-auto border-t border-border/70 scrollbar-sleek">
         {providers.map((provider) => (
-          <ProviderReadinessRows key={provider.provider} provider={provider} mode={mode} />
+          <ProviderReadinessRows
+            key={provider.provider}
+            provider={provider}
+            mode={mode}
+            healthSnapshots={healthSnapshots}
+            healthPending={healthPending}
+          />
         ))}
       </div>
       <DropdownMenuItem

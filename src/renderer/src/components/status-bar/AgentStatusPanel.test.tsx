@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import type { AgentProviderReadiness } from './agent-readiness'
+import type { AgentHealthSnapshot } from '../../../../shared/agent-health'
 
 vi.mock('@/i18n/i18n', () => ({
   translate: (_key: string, fallback: string) => fallback
@@ -60,10 +61,24 @@ const providers: AgentProviderReadiness[] = [
   }
 ]
 
+const healthSnapshots: AgentHealthSnapshot[] = [
+  {
+    provider: 'claude',
+    cliStatus: 'available',
+    health: 'healthy',
+    version: '1.0.61',
+    durationMs: 42,
+    checkedAt: 3,
+    checks: [{ id: 'cli', status: 'ok' }]
+  }
+]
+
 function renderPanel(mode: 'verbose' | 'compact'): string {
   return renderToStaticMarkup(
     <AgentStatusPanel
       providers={providers}
+      healthSnapshots={healthSnapshots}
+      healthPending={false}
       mode={mode}
       ownerLabel="This device"
       isRefreshing={false}
@@ -80,6 +95,10 @@ describe('AgentStatusPanel', () => {
     const markup = renderPanel('verbose')
 
     expect(markup).toContain('Connection status')
+    expect(markup).toContain('Health')
+    expect(markup).toContain('Available')
+    expect(markup).toContain('v1.0.61')
+    expect(markup).toContain('CLI: Passed')
     expect(markup).toContain('active@claude.test')
     expect(markup).toContain('inactive@claude.test')
     expect(markup).toContain('System default')
@@ -94,6 +113,7 @@ describe('AgentStatusPanel', () => {
     expect(markup).not.toContain('inactive@claude.test')
     expect(markup).not.toContain('System default')
     expect(markup).not.toContain('Network check failed')
+    expect(markup).not.toContain('CLI: Passed')
     expect(markup).toContain('Temporary issue')
   })
 })
