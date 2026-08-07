@@ -3455,7 +3455,7 @@
             "warning": "경고",
             "failed": "실패",
             "status": "상태",
-            "health": "Health",
+            "health": "정상 여부",
             "updating": "업데이트 중…",
             "updatedTo": "v{{value0}} 업데이트 완료",
             "latestVersion": "최신 버전",
