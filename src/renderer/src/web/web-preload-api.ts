@@ -7,6 +7,7 @@ import type {
   NativeChatAppendedMessages
 } from '../../../preload/api-types'
 import type { RuntimeRpcResponse } from '../../../shared/runtime-rpc-envelope'
+import type { AgentHealthSnapshot, AgentUpdateResult } from '../../../shared/agent-health'
 import { parseHostAccessLink } from '../../../shared/remote-pairing-address'
 import { verifyRemotePairingRuntimeStatus } from '../../../shared/remote-pairing-verification'
 import type { AiVaultListArgs, AiVaultListResult } from '../../../shared/ai-vault-types'
@@ -2831,6 +2832,12 @@ function createPreflightApi(): NonNullable<Partial<PreloadApi>['preflight']> {
             .then((result) => result as RefreshAgentsResult)
             .catch(() => fallbackRefreshAgents)
         : Promise.resolve(fallbackRefreshAgents),
+    probeAgentHealth: (args) =>
+      callRuntimeResult<AgentHealthSnapshot[]>('preflight.probeAgentHealth', args, 35_000),
+    probeAgentHealthProvider: (args) =>
+      callRuntimeResult<AgentHealthSnapshot>('preflight.probeAgentHealthProvider', args, 35_000),
+    updateAgent: (args) =>
+      callRuntimeResult<AgentUpdateResult>('preflight.updateAgent', args, 5 * 60_000 + 15_000),
     detectRemoteAgents: async (args) =>
       requireActiveEnvironmentOrNull()
         ? callRuntimeResult<string[]>('preflight.detectRemoteAgents', args).catch(() => [])
