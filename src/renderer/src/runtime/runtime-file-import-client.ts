@@ -4,9 +4,10 @@ import { captureRuntimeEnvironmentRequestRevision } from './runtime-environment-
 import { runtimePathExists } from './runtime-file-metadata-client'
 import {
   assertRuntimeFileMutationCapability,
-  callRuntimeFileMutation,
+  callRuntimeFileImportMutation,
   createRuntimeImportSessionGuard
 } from './runtime-file-mutation-rpc'
+import type { RuntimeFileImportSession } from './runtime-file-mutation-rpc'
 import {
   getRemoteFileArgs,
   joinRuntimeRelativePath,
@@ -89,18 +90,18 @@ export async function importExternalPathsToRuntime(
     options?.assertCurrent
   )
   await assertRuntimeFileMutationCapability(target, expectedEnvironmentPairingRevision)
-  assertImportSessionCurrent()
+  const importSession: RuntimeFileImportSession = {
+    target,
+    expectedEnvironmentPairingRevision,
+    assertCurrent: assertImportSessionCurrent
+  }
+  importSession.assertCurrent()
   const staged = await window.api.fs.stageExternalPathsForRuntimeUpload({ sourcePaths })
-  assertImportSessionCurrent()
+  importSession.assertCurrent()
   const results: RuntimeImportResult[] = []
   const reservedNames = new Set<string>()
 
-  await ensureRuntimeDirectory(
-    context,
-    destinationDir,
-    assertImportSessionCurrent,
-    expectedEnvironmentPairingRevision
-  )
+  await ensureRuntimeDirectory(context, destinationDir, importSession)
 
   for (const source of staged.sources as StagedRuntimeImportSource[]) {
     if (source.status !== 'staged') {
@@ -114,23 +115,21 @@ export async function importExternalPathsToRuntime(
         destinationDir,
         source.name,
         reservedNames,
-        expectedEnvironmentPairingRevision
+        importSession
       )
       const destPath = joinPath(destinationDir, finalName)
       const destRelativePath = joinRuntimeRelativePath(destinationArgs.relativePath, finalName)
       for (const entry of source.entries) {
         const entryRelativePath = joinRuntimeRelativePath(destRelativePath, entry.relativePath)
         if (entry.kind === 'directory') {
-          assertImportSessionCurrent()
-          await callRuntimeFileMutation(
-            target,
+          await callRuntimeFileImportMutation(
+            importSession,
             'files.createDirNoClobber',
             withSshMutationExpectation(context, {
               worktree: toRuntimeWorktreeSelector(context.worktreeId),
               relativePath: entryRelativePath
             }),
-            15_000,
-            expectedEnvironmentPairingRevision
+            15_000
           )
           if (source.kind === 'directory' && entry.relativePath === '') {
             createdDirectoryImportRoot = entryRelativePath
@@ -138,18 +137,16 @@ export async function importExternalPathsToRuntime(
           continue
         }
         await uploadRuntimeFileWithoutClobber(
-          target,
+          importSession,
           context.worktreeId,
           entryRelativePath,
           entry.contentBase64,
-          assertImportSessionCurrent,
           context.expectedSshConnectionGeneration,
           context.expectedSshTargetId,
           context.expectedExecutionHostId ??
             (context.expectedSshTargetId
               ? `ssh:${encodeURIComponent(context.expectedSshTargetId)}`
-              : 'local'),
-          expectedEnvironmentPairingRevision
+              : 'local')
         )
       }
       reservedNames.add(finalName)
@@ -164,17 +161,15 @@ export async function importExternalPathsToRuntime(
       if (createdDirectoryImportRoot) {
         // Why: match local directory imports by removing the no-clobber root
         // Orca created when a nested runtime upload fails halfway through.
-        assertImportSessionCurrent()
-        await callRuntimeFileMutation(
-          target,
+        await callRuntimeFileImportMutation(
+          importSession,
           'files.delete',
           withSshMutationExpectation(context, {
             worktree: toRuntimeWorktreeSelector(context.worktreeId),
             relativePath: createdDirectoryImportRoot,
             recursive: true
           }),
-          15_000,
-          expectedEnvironmentPairingRevision
+          15_000
         ).catch(() => {})
       }
       results.push({
@@ -193,13 +188,14 @@ async function deconflictRuntimeImportName(
   destinationDir: string,
   originalName: string,
   reservedNames: Set<string>,
-  expectedEnvironmentPairingRevision?: number
+  session: RuntimeFileImportSession
 ): Promise<string> {
+  session.assertCurrent()
   if (
     !(await runtimePathExists(
       context,
       joinPath(destinationDir, originalName),
-      expectedEnvironmentPairingRevision
+      session.expectedEnvironmentPairingRevision
     )) &&
     !reservedNames.has(originalName)
   ) {
@@ -211,11 +207,12 @@ async function deconflictRuntimeImportName(
   const stem = hasMeaningfulExt ? originalName.slice(0, dotIndex) : originalName
   const ext = hasMeaningfulExt ? originalName.slice(dotIndex) : ''
   let candidate = `${stem} copy${ext}`
+  session.assertCurrent()
   if (
     !(await runtimePathExists(
       context,
       joinPath(destinationDir, candidate),
-      expectedEnvironmentPairingRevision
+      session.expectedEnvironmentPairingRevision
     )) &&
     !reservedNames.has(candidate)
   ) {
@@ -225,11 +222,12 @@ async function deconflictRuntimeImportName(
   let counter = 2
   while (counter < 10000) {
     candidate = `${stem} copy ${counter}${ext}`
+    session.assertCurrent()
     if (
       !(await runtimePathExists(
         context,
         joinPath(destinationDir, candidate),
-        expectedEnvironmentPairingRevision
+        session.expectedEnvironmentPairingRevision
       )) &&
       !reservedNames.has(candidate)
     ) {

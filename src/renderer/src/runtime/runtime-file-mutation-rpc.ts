@@ -7,6 +7,11 @@ import {
 } from './runtime-environment-revision'
 
 type RuntimeFileMutationTarget = { kind: 'environment'; environmentId: string }
+export type RuntimeFileImportSession = {
+  target: RuntimeFileMutationTarget
+  expectedEnvironmentPairingRevision: number | undefined
+  assertCurrent: () => void
+}
 
 export async function assertRuntimeFileMutationCapability(
   target: RuntimeFileMutationTarget,
@@ -48,4 +53,17 @@ export function createRuntimeImportSessionGuard(
     }
     assertCallerCurrent?.()
   }
+}
+
+export function callRuntimeFileImportMutation<TResult>(
+  session: RuntimeFileImportSession,
+  method: string,
+  params: unknown,
+  timeoutMs: number
+): Promise<TResult> {
+  session.assertCurrent()
+  return callRuntimeRpc<TResult>(session.target, method, params, {
+    timeoutMs,
+    expectedEnvironmentPairingRevision: session.expectedEnvironmentPairingRevision
+  })
 }
