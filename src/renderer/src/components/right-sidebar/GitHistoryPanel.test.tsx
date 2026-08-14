@@ -99,5 +99,6 @@ describe('GitHistoryPanel', () => {
     expect(markup).not.toContain('title="main"')
     expect(markup).not.toContain('title="feature"')
     expect(markup).not.toContain('title="v1.0.0"')
+    expect(markup).not.toMatch(/\stitle=/)
   })
 })
