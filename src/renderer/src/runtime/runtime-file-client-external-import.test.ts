@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { importExternalPathsToRuntime } from './runtime-file-client'
 import { replaceRuntimeEnvironmentRevisions } from './runtime-environment-revision'
-import { markRuntimeEnvironmentCompatible } from './runtime-rpc-client'
 import {
   fsImportExternalPaths,
   fsStageExternalPathsForRuntimeUpload,
@@ -13,9 +12,8 @@ import {
 installRuntimeFileClientEnvironment()
 
 describe('runtime file client', () => {
-  it('uploads a staged directory after one ownership preflight', async () => {
+  it('uploads a staged directory after one ownership and one cold compatibility preflight', async () => {
     replaceRuntimeEnvironmentRevisions([{ id: 'env-1', createdAt: 1, pairingRevision: 17 }])
-    markRuntimeEnvironmentCompatible('env-1')
     const firstChunk = 'A'.repeat(512 * 1024)
     const secondChunk = 'BBBBBBBB'
     fsStageExternalPathsForRuntimeUpload.mockResolvedValue({
@@ -135,6 +133,7 @@ describe('runtime file client', () => {
     )
     expect(transportCalls.map((args) => args.method)).toEqual([
       'status.get',
+      'status.get',
       'files.stat',
       'files.createDir',
       'files.stat',
@@ -147,7 +146,7 @@ describe('runtime file client', () => {
       'files.commitUpload',
       'files.delete'
     ])
-    expect(transportCalls.filter((args) => args.method === 'status.get')).toHaveLength(1)
+    expect(transportCalls.filter((args) => args.method === 'status.get')).toHaveLength(2)
     expect(transportCalls.every((args) => args.expectedEnvironmentPairingRevision === 17)).toBe(
       true
     )
