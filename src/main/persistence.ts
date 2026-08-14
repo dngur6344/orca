@@ -3568,6 +3568,8 @@ export class Store {
             terminalShortcutPolicy: normalizeTerminalShortcutPolicy(
               parsed.settings?.terminalShortcutPolicy
             ),
+            terminalShortcutCaptureNotificationEnabled:
+              parsed.settings?.terminalShortcutCaptureNotificationEnabled !== false,
             disabledTuiAgents: migratedDisabledTuiAgents,
             ...migratedAgentYoloDefaults,
             claudeAgentTeamsDefaultDisabledMigrated: true,
@@ -6025,6 +6027,10 @@ export class Store {
       sanitizedUpdates.terminalShortcutPolicy = normalizeTerminalShortcutPolicy(
         updates.terminalShortcutPolicy
       )
+    }
+    if ('terminalShortcutCaptureNotificationEnabled' in updates) {
+      sanitizedUpdates.terminalShortcutCaptureNotificationEnabled =
+        updates.terminalShortcutCaptureNotificationEnabled !== false
     }
     if ('sourceControlGroupOrder' in updates) {
       sanitizedUpdates.sourceControlGroupOrder = normalizeSourceControlGroupOrder(

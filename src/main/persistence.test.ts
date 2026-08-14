@@ -810,6 +810,7 @@ describe('Store', () => {
     expect(settings.rightSidebarOpenByDefault).toBe(true)
     expect(settings.showTasksButton).toBe(true)
     expect(settings.showAutomationsButton).toBe(true)
+    expect(settings.terminalShortcutCaptureNotificationEnabled).toBe(true)
     expect(settings.visibleTaskProviders).toEqual(['github', 'gitlab', 'linear', 'jira'])
     expect(settings.openInApplications).toEqual([
       { id: 'vscode', label: 'VS Code', command: 'code' }
@@ -2898,6 +2899,21 @@ describe('Store', () => {
 
     const store = await createStore()
     expect(store.getSettings().terminalShortcutPolicy).toBe('orca-first')
+  })
+
+  it('only disables terminal shortcut capture notifications for an explicit false', async () => {
+    writeDataFile({
+      schemaVersion: 1,
+      repos: [],
+      worktreeMeta: {},
+      settings: { terminalShortcutCaptureNotificationEnabled: 'false' as never },
+      ui: {},
+      githubCache: { pr: {}, issue: {} },
+      workspaceSession: {}
+    })
+
+    const store = await createStore()
+    expect(store.getSettings().terminalShortcutCaptureNotificationEnabled).toBe(true)
   })
 
   it('normalizes malformed source control group order on load', async () => {
@@ -6508,6 +6524,20 @@ describe('Store', () => {
 
     store.updateSettings({ terminalShortcutPolicy: 'terminal-maybe' as never })
     expect(store.getSettings().terminalShortcutPolicy).toBe('orca-first')
+  })
+
+  it('updateSettings persists terminal shortcut capture notification preference', async () => {
+    const store = await createStore()
+
+    store.updateSettings({ terminalShortcutCaptureNotificationEnabled: false })
+    expect(store.getSettings().terminalShortcutCaptureNotificationEnabled).toBe(false)
+    store.flush()
+
+    const reloaded = await createStore()
+    expect(reloaded.getSettings().terminalShortcutCaptureNotificationEnabled).toBe(false)
+
+    reloaded.updateSettings({ terminalShortcutCaptureNotificationEnabled: 'false' as never })
+    expect(reloaded.getSettings().terminalShortcutCaptureNotificationEnabled).toBe(true)
   })
 
   it('reloads sourceControlViewMode from global settings without touching workspace state', async () => {

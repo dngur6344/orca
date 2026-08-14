@@ -51,6 +51,9 @@ export function ShortcutsPane(): React.JSX.Element {
   const terminalShortcutPolicy = useAppStore(
     (state) => state.settings?.terminalShortcutPolicy ?? 'orca-first'
   )
+  const terminalShortcutCaptureNotificationEnabled = useAppStore(
+    (state) => state.settings?.terminalShortcutCaptureNotificationEnabled !== false
+  )
   const updateSettings = useAppStore((state) => state.updateSettings)
   const keybindings = useAppStore((state) => state.keybindings)
   const keybindingSnapshot = useAppStore((state) => state.keybindingSnapshot)
@@ -278,6 +281,7 @@ export function ShortcutsPane(): React.JSX.Element {
         {showPolicy ? (
           <ShortcutTerminalPolicyControl
             terminalShortcutPolicy={terminalShortcutPolicy}
+            terminalShortcutCaptureNotificationEnabled={terminalShortcutCaptureNotificationEnabled}
             keywords={getTerminalShortcutPolicySearchEntry().keywords}
             updateSettings={updateSettings}
           />
