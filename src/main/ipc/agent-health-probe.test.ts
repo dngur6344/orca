@@ -97,6 +97,28 @@ describe('agent health probe', () => {
     ])
   })
 
+  it('reports unknown Codex health when doctor output is unavailable', async () => {
+    const runCommand = vi.fn(async (_provider: 'claude' | 'codex', args: string[]) => {
+      if (args[0] === '--version') {
+        return { stdout: 'codex-cli 0.146.1', stderr: '' }
+      }
+      if (args[0] === 'doctor') {
+        throw new Error('doctor unavailable')
+      }
+      return { stdout: 'Update Codex', stderr: '' }
+    })
+
+    await expect(
+      probeAgentProviderHealth('codex', undefined, { runCommand })
+    ).resolves.toMatchObject({
+      provider: 'codex',
+      cliStatus: 'available',
+      health: 'unknown',
+      version: '0.146.1',
+      checks: [{ id: 'cli', status: 'ok' }]
+    })
+  })
+
   it('reports an unavailable CLI without attempting its deeper checks', async () => {
     const runCommand = vi.fn(async (provider: 'claude' | 'codex', _args: string[]) => {
       if (provider === 'codex') {

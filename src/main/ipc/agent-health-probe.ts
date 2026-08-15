@@ -174,7 +174,7 @@ async function probeProvider(
     return {
       provider,
       cliStatus: 'available',
-      health: healthFromChecks(checks),
+      health: report ? healthFromChecks(checks) : 'unknown',
       version,
       durationMs: Math.max(0, checkedAt - startedAt),
       checkedAt,
