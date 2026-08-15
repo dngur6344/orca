@@ -15,7 +15,7 @@ import {
 import type {
   ClaudeRateLimitAccountsState,
   CodexRateLimitAccountsState
-} from '../../../../shared/types'
+} from '../../../../shared/managed-account-types'
 import {
   buildAgentReadiness,
   shouldShowAgentReadiness,

@@ -1,8 +1,8 @@
 import type {
   ClaudeRateLimitAccountsState,
-  CodexRateLimitAccountsState,
-  GlobalSettings
-} from '../../../../shared/types'
+  CodexRateLimitAccountsState
+} from '../../../../shared/managed-account-types'
+import type { GlobalSettings } from '../../../../shared/global-settings-types'
 
 export function getCodexStatusAccountsFromSettings(
   settings: GlobalSettings | null | undefined

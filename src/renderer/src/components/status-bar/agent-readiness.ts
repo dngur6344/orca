@@ -1,9 +1,9 @@
 import type {
   ClaudeRateLimitAccountsState,
   CodexRateLimitAccountsState,
-  CodexSystemDefaultIdentity,
-  TuiAgent
-} from '../../../../shared/types'
+  CodexSystemDefaultIdentity
+} from '../../../../shared/managed-account-types'
+import type { TuiAgent } from '../../../../shared/tui-agent'
 import type {
   InactiveAccountUsage,
   ProviderRateLimits,
