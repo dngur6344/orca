@@ -123,18 +123,29 @@ describe('Store', () => {
   })
 
   it('only disables terminal shortcut capture notifications for an explicit false', async () => {
+    writeDataFile(getDefaultPersistedState(testState.dir))
+    const initialized = await createStore()
+    initialized.flush()
+
+    const persisted = readDataFile() as PersistedState
     writeDataFile({
-      schemaVersion: 1,
-      repos: [],
-      worktreeMeta: {},
-      settings: { terminalShortcutCaptureNotificationEnabled: 'false' as never },
-      ui: {},
-      githubCache: { pr: {}, issue: {} },
-      workspaceSession: {}
+      ...persisted,
+      settings: {
+        ...persisted.settings,
+        terminalShortcutCaptureNotificationEnabled: 'false' as never
+      }
     })
 
     const store = await createStore()
     expect(store.getSettings().terminalShortcutCaptureNotificationEnabled).toBe(true)
+    await vi.waitFor(
+      () => {
+        expect(
+          (readDataFile() as PersistedState).settings.terminalShortcutCaptureNotificationEnabled
+        ).toBe(true)
+      },
+      { timeout: 2_000 }
+    )
   })
 
   it('returns default UI state when no data file exists', async () => {
