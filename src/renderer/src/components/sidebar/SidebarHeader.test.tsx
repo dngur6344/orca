@@ -1,51 +1,120 @@
 // @vitest-environment happy-dom
 
-import { cleanup, fireEvent, render } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { TooltipProvider } from '@/components/ui/tooltip'
+import React, { act } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import SidebarHeader from './SidebarHeader'
+
+;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const mocks = vi.hoisted(() => ({
-  state: {
-    folderWorkspaces: [],
-    groupBy: 'repo',
-    openModal: vi.fn(),
-    repos: [{ id: 'project-1' }]
-  } as Record<string, unknown>
-}))
-
-vi.mock('@/store', () => ({
-  useAppStore: (selector: (state: Record<string, unknown>) => unknown) => selector(mocks.state)
-}))
-
-vi.mock('@/hooks/useShortcutLabel', () => ({
-  useShortcutLabel: () => '⌘N'
-}))
-
-vi.mock('./SidebarWorkspaceOptionsMenu', () => ({
-  default: () => <div />
-}))
-
-vi.mock('../contextual-tours/workspace-creation-tour-handoff', () => ({
   openWorkspaceCreationComposerWithTourHandoff: vi.fn()
 }))
 
-import SidebarHeader from './SidebarHeader'
+type MockState = {
+  folderWorkspaces: { id: string }[]
+  repos: { id: string }[]
+  groupBy: string
+  openModal: (modal: string, data?: unknown) => void
+}
 
-afterEach(cleanup)
+let mockState: MockState
+
+vi.mock('@/store', () => ({
+  useAppStore: (selector: (state: MockState) => unknown) => selector(mockState)
+}))
+
+vi.mock('./SidebarWorkspaceOptionsMenu', () => ({ default: () => null }))
+
+vi.mock('@/hooks/useShortcutLabel', () => ({ useShortcutLabel: () => '⌘N' }))
+
+vi.mock('@/components/ui/tooltip', () => ({
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipContent: ({ children }: { children: React.ReactNode }) => <>{children}</>
+}))
+
+vi.mock('../contextual-tours/workspace-creation-tour-handoff', () => ({
+  openWorkspaceCreationComposerWithTourHandoff: mocks.openWorkspaceCreationComposerWithTourHandoff
+}))
+
+let container: HTMLDivElement
+let root: Root
+
+function newWorkspaceButton(): HTMLButtonElement {
+  const button = container.querySelector<HTMLButtonElement>('[aria-label="New workspace"]')
+  if (!button) {
+    throw new Error('New workspace button not rendered')
+  }
+  return button
+}
+
+function collapseAllProjectsButton(): HTMLButtonElement {
+  const button = container.querySelector<HTMLButtonElement>('[aria-label="Collapse all projects"]')
+  if (!button) {
+    throw new Error('Collapse all projects button not rendered')
+  }
+  return button
+}
+
+function renderHeader(onCollapseAllProjects = vi.fn()): void {
+  act(() => {
+    root.render(
+      <SidebarHeader
+        onCollapseAllProjects={onCollapseAllProjects}
+        onWorkspaceBoardMenuOpenChange={vi.fn()}
+      />
+    )
+  })
+}
+
+beforeEach(() => {
+  mocks.openWorkspaceCreationComposerWithTourHandoff.mockClear()
+  mockState = { folderWorkspaces: [], repos: [], groupBy: 'repo', openModal: vi.fn() }
+  container = document.createElement('div')
+  document.body.append(container)
+  root = createRoot(container)
+})
+
+afterEach(() => {
+  act(() => root.unmount())
+  container.remove()
+})
 
 describe('SidebarHeader', () => {
-  it('collapses all projects from the control beside the section title', () => {
-    const onCollapseAllProjects = vi.fn()
-    const view = render(
-      <TooltipProvider>
-        <SidebarHeader
-          onCollapseAllProjects={onCollapseAllProjects}
-          onWorkspaceBoardMenuOpenChange={vi.fn()}
-        />
-      </TooltipProvider>
-    )
+  it('keeps New workspace clickable with zero projects, since the composer adds the first one', () => {
+    renderHeader()
 
-    fireEvent.click(view.getByRole('button', { name: 'Collapse all projects' }))
+    const button = newWorkspaceButton()
+    expect(button.disabled).toBe(false)
+
+    act(() => {
+      button.click()
+    })
+
+    expect(mocks.openWorkspaceCreationComposerWithTourHandoff).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens the composer the same way once projects exist', () => {
+    mockState.repos = [{ id: 'repo-a' }]
+    renderHeader()
+
+    act(() => {
+      newWorkspaceButton().click()
+    })
+
+    expect(newWorkspaceButton().disabled).toBe(false)
+    expect(mocks.openWorkspaceCreationComposerWithTourHandoff).toHaveBeenCalledTimes(1)
+  })
+
+  it('collapses all projects from the control beside the section title', () => {
+    mockState.repos = [{ id: 'repo-a' }]
+    const onCollapseAllProjects = vi.fn()
+    renderHeader(onCollapseAllProjects)
+
+    act(() => {
+      collapseAllProjectsButton().click()
+    })
 
     expect(onCollapseAllProjects).toHaveBeenCalledOnce()
   })

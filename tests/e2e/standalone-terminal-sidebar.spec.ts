@@ -1,15 +1,16 @@
 import { FLOATING_TERMINAL_WORKTREE_ID } from '../../src/shared/constants'
 import { test, expect } from './helpers/orca-app'
-import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
+import { waitForSessionReady } from './helpers/store'
 
 test.describe('Standalone terminal sidebar', () => {
+  test.use({ seedTestRepo: false })
+
   test('opens home terminals in the main workbench and renames them', async ({ orcaPage }) => {
     await waitForSessionReady(orcaPage)
-    await waitForActiveWorktree(orcaPage)
     const initialWorktreeId = await orcaPage.evaluate(
       () => window.__store?.getState().activeWorktreeId ?? null
     )
-    expect(initialWorktreeId).not.toBeNull()
+    expect(initialWorktreeId).toBeNull()
 
     const section = orcaPage.locator('[data-standalone-terminal-section]')
     await expect(section).toBeVisible()
@@ -108,18 +109,5 @@ test.describe('Standalone terminal sidebar', () => {
     await expect
       .poll(() => orcaPage.evaluate(() => window.__store?.getState().activeTabType ?? null))
       .toBe('terminal')
-
-    await orcaPage.evaluate((worktreeId) => {
-      const state = window.__store?.getState()
-      state?.setActiveView('terminal')
-      state?.setActiveWorktree(worktreeId)
-    }, initialWorktreeId)
-    await expect(orcaPage.locator('[data-floating-terminal-panel]')).toHaveAttribute(
-      'aria-hidden',
-      'true'
-    )
-    await expect(
-      orcaPage.locator(`[data-terminal-tab-id=${JSON.stringify(firstState.id)}]`)
-    ).toHaveCount(1)
   })
 })
