@@ -245,11 +245,12 @@ describe('LocalPtyProvider', () => {
         cols: 80,
         rows: 24,
         worktreeId: 'global-floating-terminal',
-        historyIsolationEnabled: false
+        historyIsolationEnabled: false,
+        env: { HISTFILE: '/home/me/.zsh_history' }
       })
 
       const env = spawnMock.mock.calls.at(-1)![2].env
-      expect(env.HISTFILE).toBeUndefined()
+      expect(env.HISTFILE).toBe('/home/me/.zsh_history')
       expect(env.ORCA_HISTFILE).toBeUndefined()
     })
 

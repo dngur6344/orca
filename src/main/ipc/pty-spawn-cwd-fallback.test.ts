@@ -61,7 +61,8 @@ describe('registerPtyHandlers', () => {
       cols: 80,
       rows: 24,
       cwd: '/tmp/floating-notes',
-      worktreeId: FLOATING_TERMINAL_WORKTREE_ID
+      worktreeId: FLOATING_TERMINAL_WORKTREE_ID,
+      env: { HISTFILE: '/home/me/.zsh_history' }
     })
 
     const [, , options] = spawnMock.mock.calls.at(-1) as [
@@ -70,7 +71,7 @@ describe('registerPtyHandlers', () => {
       { cwd: string; env: Record<string, string> }
     ]
     expect(options.cwd).toBe('/tmp/floating-notes')
-    expect(options.env.HISTFILE).toBeUndefined()
+    expect(options.env.HISTFILE).toBe('/home/me/.zsh_history')
     expect(options.env.ORCA_HISTFILE).toBeUndefined()
   })
   it('keeps regular workspace terminal history isolated', async () => {

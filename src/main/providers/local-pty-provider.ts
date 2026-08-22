@@ -852,7 +852,6 @@ export class LocalPtyProvider implements IPtyProvider {
       })
       if (isWslTerminal && launchWslDistro) {
         injectWslFishHistoryEnv(finalEnv, worktreeId, launchWslDistro)
-        addWslEnvKeys(finalEnv, ['HISTFILE', 'fish_history'])
       }
       logHistoryInjection(worktreeId, historyResult)
     } else {
@@ -865,6 +864,12 @@ export class LocalPtyProvider implements IPtyProvider {
       // And for an exported HISTFILE: history off means the shell's own default,
       // not the history file of the worktree this Orca was launched from.
       dropInheritedOrcaHistFile(finalEnv)
+    }
+    if (isWslTerminal) {
+      const historyKeys = ['HISTFILE', 'fish_history'].filter((key) => finalEnv[key] !== undefined)
+      if (historyKeys.length > 0) {
+        addWslEnvKeys(finalEnv, historyKeys)
+      }
     }
 
     if (!wslInfo && process.platform !== 'win32') {
