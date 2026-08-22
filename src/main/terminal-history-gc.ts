@@ -12,6 +12,7 @@ import {
 import { readHistoryMeta } from './terminal-history'
 import { resolveFishHistoryDir, sweepOrphanedFishHistoryFiles } from './fish-history-session'
 import { hashWorktreeId } from './terminal-history-id'
+import { FLOATING_TERMINAL_WORKTREE_ID } from '../shared/constants'
 
 // Why 5 minutes: GC runs ~10s after startup, and the live-worktree snapshot is
 // taken just before. A worktree created between the snapshot and GC execution
@@ -130,14 +131,17 @@ export function runHistoryGc(liveWorktreeIds: Set<string>): void {
       console.log('[pty:history:gc] Skipped: live worktree set is empty')
       return
     }
-    const main = gcScanRoot(getHistoryRoot(), liveWorktreeIds)
+    const protectedHistoryOwnerIds = new Set(liveWorktreeIds)
+    // Floating is synthetic and absent from the workspace catalog; retain its legacy scoped data.
+    protectedHistoryOwnerIds.add(FLOATING_TERMINAL_WORKTREE_ID)
+    const main = gcScanRoot(getHistoryRoot(), protectedHistoryOwnerIds)
 
     // Also scan WSL history directories (each distro has its own subdirectory).
     const wslTotals = { totalDirs: 0, orphaned: 0, pruned: 0, totalSizeKB: 0 }
     const liveFishHistoryDirs = new Set(main.fishHistoryDirs)
     for (const distroRoot of listWslHistoryRoots()) {
       schedulePendingHistoryTreeRemovals(distroRoot)
-      const r = gcScanRoot(distroRoot, liveWorktreeIds)
+      const r = gcScanRoot(distroRoot, protectedHistoryOwnerIds)
       wslTotals.totalDirs += r.totalDirs
       wslTotals.orphaned += r.orphaned
       wslTotals.pruned += r.pruned
@@ -157,7 +161,7 @@ export function runHistoryGc(liveWorktreeIds: Set<string>): void {
       fishDirs.add(dir)
     }
     const fishOrphans = sweepOrphanedFishHistoryFiles(
-      new Set([...liveWorktreeIds].map(hashWorktreeId)),
+      new Set([...protectedHistoryOwnerIds].map(hashWorktreeId)),
       fishDirs,
       GC_MIN_AGE_MS
     )

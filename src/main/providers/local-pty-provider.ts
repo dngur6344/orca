@@ -838,14 +838,15 @@ export class LocalPtyProvider implements IPtyProvider {
 
     // Why: worktree-scoped HISTFILE — without it worktrees share one global history (terminal-history-scope-design §7–§10).
     const worktreeId = args.worktreeId
-    const historyEnabled = worktreeId && (this.opts.isHistoryEnabled?.() ?? true)
+    const historyEnabled =
+      args.historyIsolationEnabled !== false && (this.opts.isHistoryEnabled?.() ?? true)
     // Effective shell for history injection: WSL's outer exe is wsl.exe but the inner login shell is bash.
     const isWslTerminal =
       Boolean(wslInfo || worktreeWslContext || preferredWslContext) ||
       pathWin32.basename(shellPath).toLowerCase() === 'wsl.exe'
     const effectiveShellPath = isWslTerminal ? 'bash' : shellPath
     let historyResult: ReturnType<typeof injectHistoryEnv> | null = null
-    if (historyEnabled) {
+    if (worktreeId && historyEnabled) {
       historyResult = injectHistoryEnv(finalEnv, worktreeId, effectiveShellPath, cwd, {
         wslDistro: launchWslDistro
       })

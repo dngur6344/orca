@@ -102,6 +102,7 @@ import {
 } from './terminal-history-deletion'
 
 import { runHistoryGc, scheduleHistoryGc } from './terminal-history-gc'
+import { FLOATING_TERMINAL_WORKTREE_ID } from '../shared/constants'
 
 const OTHER_WORKTREE_HASH = hashWorktreeId('repo-1::/path/other-wt')
 
@@ -744,6 +745,32 @@ describe('terminal-history', () => {
         expect.stringContaining(`.pending-delete${sep}dir2.`),
         expect.objectContaining({ recursive: true, force: true })
       )
+    })
+
+    it('preserves legacy floating-terminal history outside the workspace catalog', () => {
+      existsSyncMock.mockImplementation((p: string) => !p.includes('terminal-history-wsl'))
+      readdirSyncMock.mockImplementation((dir: string) => {
+        if (dir.endsWith('.pending-delete')) {
+          return []
+        }
+        if (dir.endsWith('terminal-history')) {
+          return ['floating']
+        }
+        return ['meta.json']
+      })
+      statSyncMock.mockReturnValue({ isDirectory: () => true, size: 100 })
+      readFileSyncMock.mockReturnValue(
+        JSON.stringify({
+          worktreeId: FLOATING_TERMINAL_WORKTREE_ID,
+          createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString()
+        })
+      )
+
+      runHistoryGc(new Set(['live-wt']))
+
+      expect(renameSyncMock).not.toHaveBeenCalled()
+      expect(rmSyncMock).not.toHaveBeenCalled()
+      expect(rmAsyncMock).not.toHaveBeenCalled()
     })
 
     // Why: an empty live set is what a store that fell back to default state

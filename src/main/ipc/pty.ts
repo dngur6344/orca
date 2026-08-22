@@ -97,6 +97,7 @@ import {
 } from '../providers/ssh-pty-errors'
 import { parseAppSshPtyId, toAppSshPtyId, toRelaySshPtyId } from '../providers/ssh-pty-id'
 import { createPtySpawnTiming } from './pty-spawn-timing'
+import { shouldScopeTerminalHistoryByWorktree } from '../terminal-history-scope-policy'
 import {
   isSafePtySessionId,
   mintPtySessionId,
@@ -4837,7 +4838,10 @@ export function registerPtyHandlers(
         cwd,
         env,
         ...(isNewDaemonSession ? { isNewSession: true } : {}),
-        historyIsolationEnabled: getSettings?.()?.terminalScopeHistoryByWorktree ?? true
+        historyIsolationEnabled: shouldScopeTerminalHistoryByWorktree(
+          getSettings?.()?.terminalScopeHistoryByWorktree ?? true,
+          args.worktreeId
+        )
       }
       if (!args.connectionId && !isDaemonHostSpawn) {
         spawnOptions.codexHomePathOverride = { value: selectedCodexHomePath }
@@ -6613,7 +6617,10 @@ export function registerPtyHandlers(
           ...(prevalidatedCwd && !isDaemonHostSpawn ? { prevalidatedCwd } : {}),
           env: spawnEnv,
           ...(isMintedSessionId ? { isNewSession: true } : {}),
-          historyIsolationEnabled: getSettings?.()?.terminalScopeHistoryByWorktree ?? true
+          historyIsolationEnabled: shouldScopeTerminalHistoryByWorktree(
+            getSettings?.()?.terminalScopeHistoryByWorktree ?? true,
+            args.worktreeId
+          )
         }
         if (!args.connectionId && !isDaemonHostSpawn) {
           spawnOptions.codexHomePathOverride = { value: selectedCodexHomePath }
