@@ -6,7 +6,7 @@ import {
   detectInstalledAgentsWithShellPathHydration,
   refreshShellPathAndDetectAgents,
   runPreflightCheck
-} from '../../../ipc/preflight'
+} from '../../../preflight/agent-detection'
 import {
   probeAgentHealth,
   probeAgentProviderHealth,

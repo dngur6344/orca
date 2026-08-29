@@ -61,7 +61,7 @@ import {
 import { useHostClient, useForceReconnect } from '../../../../src/transport/client-context'
 import {
   useLastConnectedAt,
-  usePendingConnectionPath,
+  useRelayRecoveryStatus,
   useReconnectAttempt
 } from '../../../../src/transport/client-context-connection-metrics'
 import {
@@ -117,6 +117,10 @@ import {
 } from '../../../../src/terminal/terminal-accessory-layout'
 import { createTerminalLiveAccessoryInput } from '../../../../src/terminal/terminal-live-accessory-input'
 import { sendTerminalLiveAccessoryRawBytes } from '../../../../src/terminal/terminal-live-accessory-raw-send'
+import {
+  createTerminalAccessoryRepeatController,
+  createTerminalAccessoryRepeatSender
+} from '../../../../src/terminal/terminal-accessory-repeat'
 import {
   clearTerminalLiveInputFocusTimer,
   isTerminalLiveInputWithinByteLimit,
@@ -208,6 +212,7 @@ import {
   confirmsMirroredTabSelection,
   type AppliedSnapshotMarker
 } from '../../../../src/session/session-tab-snapshot-gate'
+import { resolveActiveSessionTab } from '../../../../src/session/active-session-tab'
 import {
   createInitialSessionAutoCreateState,
   useInitialSessionTerminalAutoCreate,
@@ -737,7 +742,7 @@ export default function SessionScreen() {
   const { client, state: connState } = useHostClient(hostId)
   const reconnectAttempts = useReconnectAttempt(hostId)
   const lastConnectedAt = useLastConnectedAt(hostId)
-  const pendingConnectionPath = usePendingConnectionPath(hostId)
+  const relayRecovery = useRelayRecoveryStatus(hostId)
   const forceReconnectHost = useForceReconnect()
   const { name: worktreeName, resolution: worktreeResolution } = useLiveWorktreeName({
     client,
@@ -933,6 +938,8 @@ export default function SessionScreen() {
   const activeHandleRef = useRef<string | null>(null)
   const activeSessionTabTypeRef = useRef<MobileSessionTabType | null>(null)
   const pendingActiveSessionTabIdRef = useRef<string | null>(null)
+  // Why: survive transient snapshot gaps so the device's own tab pick can re-bind.
+  const selectedSessionTabIdRef = useRef<string | null>(null)
   const pendingActiveTerminalHandleRef = useRef<string | null>(null)
   // Why: remember the page id to activate its session tab once it syncs (bridge auto-activate flags only webContents, not the app-level active tab).
   const pendingBrowserFocusPageIdRef = useRef<string | null>(null)
@@ -1740,26 +1747,28 @@ export default function SessionScreen() {
 
       const snapshotActive = nextTabs.find((tab) => tab.isActive) ?? nextTabs[0] ?? null
       const pendingActiveSessionTabId = pendingActiveSessionTabIdRef.current
-      const pendingActiveTerminalHandle = pendingActiveTerminalHandleRef.current
-      let active = snapshotActive
-      let selectionSource = 'snapshot'
-      if (pendingActiveSessionTabId) {
-        if (snapshotActive?.id === pendingActiveSessionTabId) {
-          if (confirmsMirroredTabSelection(result.publicationEpoch)) {
-            pendingActiveSessionTabIdRef.current = null
-          } else {
-            selectionSource = 'pending-tab-local-ack'
-          }
-        } else {
-          const pendingTab = nextTabs.find((tab) => tab.id === pendingActiveSessionTabId)
-          if (pendingTab) {
-            // Why: desktop tab snapshots can lag a mobile tap mid-activate-RPC; keep the local selection to avoid snapping back.
-            active = pendingTab
-            selectionSource = 'pending-tab'
-          } else {
-            pendingActiveSessionTabIdRef.current = null
-          }
-        }
+      const followsHost = result.navigationIntent === 'follow'
+      const pendingActiveTerminalHandle = followsHost
+        ? null
+        : pendingActiveTerminalHandleRef.current
+      if (followsHost) {
+        pendingActiveTerminalHandleRef.current = null
+        pendingBrowserFocusPageIdRef.current = null
+      }
+      const resolved = resolveActiveSessionTab(nextTabs, {
+        pendingActiveSessionTabId,
+        selectedSessionTabId: selectedSessionTabIdRef.current,
+        navigationIntent: result.navigationIntent
+      })
+      let active = resolved.activeTab
+      let selectionSource: string = resolved.selectionSource
+      if (resolved.clearPendingActiveSessionTabId) {
+        const localAck =
+          !followsHost &&
+          snapshotActive?.id === pendingActiveSessionTabId &&
+          !confirmsMirroredTabSelection(result.publicationEpoch)
+        selectionSource = localAck ? 'pending-tab-local-ack' : selectionSource
+        pendingActiveSessionTabIdRef.current = localAck ? pendingActiveSessionTabId : null
       }
       if (pendingActiveTerminalHandle) {
         const pendingTerminalTab = nextTabs.find(
@@ -1769,14 +1778,15 @@ export default function SessionScreen() {
         const pendingTerminalExists = mergedTerminalsForActive.some(
           (terminal) => terminal.handle === pendingActiveTerminalHandle
         )
-        if (
-          snapshotActive?.type === 'terminal' &&
-          snapshotActive.terminal === pendingActiveTerminalHandle
-        ) {
-          if (confirmsMirroredTabSelection(result.publicationEpoch)) {
-            pendingActiveTerminalHandleRef.current = null
-          } else {
+        if (active?.type === 'terminal' && active.terminal === pendingActiveTerminalHandle) {
+          if (
+            snapshotActive?.type === 'terminal' &&
+            snapshotActive.terminal === pendingActiveTerminalHandle &&
+            !confirmsMirroredTabSelection(result.publicationEpoch)
+          ) {
             selectionSource = 'pending-handle-local-ack'
+          } else {
+            pendingActiveTerminalHandleRef.current = null
           }
         } else if (pendingTerminalTab) {
           // Why: desktop active flags lag a mobile tap; key by handle too, as fallback PTY tabs lack a stable tab id at startup.
@@ -1799,6 +1809,9 @@ export default function SessionScreen() {
         }
       }
       diagnostics.tabsApplied(result, nextTabs, active, selectionSource)
+      if (!resolved.retainSelectedSessionTabId || active !== resolved.activeTab) {
+        selectedSessionTabIdRef.current = active?.id ?? null
+      }
       activeSessionTabTypeRef.current = active?.type ?? null
       activeSessionTabIdRef.current = active?.id ?? null
       setActiveSessionTabId(active?.id ?? null)
@@ -2590,6 +2603,7 @@ export default function SessionScreen() {
     activeHandleRef.current = null
     activeSessionTabTypeRef.current = null
     pendingActiveSessionTabIdRef.current = null
+    selectedSessionTabIdRef.current = null
     pendingActiveTerminalHandleRef.current = null
     pendingBrowserFocusPageIdRef.current = null
     pendingTerminalActivationAttemptRef.current = null
@@ -2983,16 +2997,22 @@ export default function SessionScreen() {
     }
   }
 
-  async function handleAccessoryKey(input: ReturnType<typeof createTerminalLiveAccessoryInput>) {
-    if (!client || !activeHandle || !canSend) {
-      return
+  async function handleAccessoryKey(
+    input: ReturnType<typeof createTerminalLiveAccessoryInput>,
+    targetHandle = activeHandleRef.current,
+    isDeliveryTargetCurrent: () => boolean = () => targetHandle === activeHandleRef.current
+  ) {
+    if (!client || !targetHandle || !isDeliveryTargetCurrent() || !canSend) {
+      return false
     }
-    const targetHandle = activeHandle
     const accessoryCommit = await handleLiveInputAccessoryBytes(input)
-    if (accessoryCommit.kind !== 'allow-raw') {
-      return
+    if (!isDeliveryTargetCurrent()) {
+      return false
     }
-    await sendTerminalLiveAccessoryRawBytes({
+    if (accessoryCommit.kind !== 'allow-raw') {
+      return accessoryCommit.kind === 'handled'
+    }
+    return sendTerminalLiveAccessoryRawBytes({
       client: clientRef.current,
       targetHandle,
       activeHandle: activeHandleRef.current,
@@ -3389,32 +3409,37 @@ export default function SessionScreen() {
     }
   }
 
-  // Why: hold-to-repeat matches iOS cadence (400ms then 45ms); non-repeatable keys fire once (holding is destructive).
-  const repeatTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  // Why: ref keeps repeat firing the current callback; else a mid-hold tab switch/reconnect routes bytes to a stale terminal.
+  const accessoryRepeatRef = useRef(
+    createTerminalAccessoryRepeatController<ReturnType<typeof createTerminalLiveAccessoryInput>>()
+  )
+  // Why: the current callback observes reconnect state while the sender pins the press to its original terminal.
   const handleAccessoryKeyRef = useRef(handleAccessoryKey)
   handleAccessoryKeyRef.current = handleAccessoryKey
   const stopAccessoryRepeat = useCallback(() => {
-    if (repeatTimeoutRef.current) {
-      clearTimeout(repeatTimeoutRef.current)
-      repeatTimeoutRef.current = null
-    }
-    if (repeatIntervalRef.current) {
-      clearInterval(repeatIntervalRef.current)
-      repeatIntervalRef.current = null
-    }
+    accessoryRepeatRef.current.stop()
   }, [])
   const startAccessoryRepeat = useCallback(
     (input: ReturnType<typeof createTerminalLiveAccessoryInput>) => {
-      stopAccessoryRepeat()
-      repeatTimeoutRef.current = setTimeout(() => {
-        repeatIntervalRef.current = setInterval(() => {
-          void handleAccessoryKeyRef.current(input)
-        }, 45)
-      }, 400)
+      // Why: a held repeat must not resume through a replacement client or connection.
+      const targetClient = clientRef.current
+      const targetConnectedAt = targetClient?.getLastConnectedAt() ?? null
+      const isDeliveryTargetCurrent = (targetHandle: string) =>
+        activeHandleRef.current === targetHandle &&
+        targetClient !== null &&
+        clientRef.current === targetClient &&
+        connStateRef.current === 'connected' &&
+        targetClient.getLastConnectedAt() === targetConnectedAt
+      accessoryRepeatRef.current.start(
+        input,
+        createTerminalAccessoryRepeatSender(
+          activeHandleRef.current,
+          isDeliveryTargetCurrent,
+          (nextInput, targetHandle, isTargetCurrent) =>
+            handleAccessoryKeyRef.current(nextInput, targetHandle, isTargetCurrent)
+        )
+      )
     },
-    [stopAccessoryRepeat]
+    []
   )
   const setMobileSessionRootRef = useCallback(
     (node: View | null): void => {
@@ -3430,15 +3455,14 @@ export default function SessionScreen() {
       clearPendingLiveInputCommit()
       sessionTabActionSheetRequestSeqRef.current += 1
       clearSessionTabActionSheetKeyboardListener()
-      stopAccessoryRepeat()
+      accessoryRepeatRef.current.cancel()
     },
     [
       clearPendingLiveInputCommit,
       clearDelayedActionTimers,
       clearSessionTabActionSheetKeyboardListener,
       clearTerminalCache,
-      clearToastHideTimer,
-      stopAccessoryRepeat
+      clearToastHideTimer
     ]
   )
 
@@ -4068,6 +4092,8 @@ export default function SessionScreen() {
         // so comparing against the ref keeps the anchor from being nulled out.
         if (activeSessionTabIdRef.current === tab.id || remainingTabs.length === 0) {
           activeSessionTabTypeRef.current = null
+          // Why: an explicit close is not a transient gap; drop the sticky pick so the snapshot picks the next tab.
+          selectedSessionTabIdRef.current = null
           activeSessionTabIdRef.current = null
           setActiveSessionTabId(null)
           activeHandleRef.current = null
@@ -4174,7 +4200,7 @@ export default function SessionScreen() {
     reconnectAttempts,
     lastConnectedAt,
     endpoint: hostEndpoint,
-    pendingPath: pendingConnectionPath
+    ...relayRecovery
   })
   const showConnectionRetry =
     connectionVerdict.kind === 'warning' || connectionVerdict.kind === 'unreachable'
@@ -4836,7 +4862,6 @@ export default function SessionScreen() {
                             return
                           }
                           const input = createTerminalLiveAccessoryInput(key)
-                          void handleAccessoryKey(input)
                           startAccessoryRepeat(input)
                         }}
                         onPressOut={() => {

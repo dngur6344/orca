@@ -1,5 +1,3 @@
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import type {
   AgentHealthCheck,
   AgentHealthProvider,
@@ -9,8 +7,8 @@ import type {
   AgentUpdateResult
 } from '../../shared/agent-health'
 import { compareAppVersions, isValidAppVersion } from '../../shared/app-version'
+import { runProcess } from '../../shared/child-process/run-process'
 import { resolveClaudeCommand, resolveCodexCommand } from '../../shared/node-cli-command-resolution'
-import { getSpawnArgsForWindows } from '../win32-utils'
 import { buildLocalPreflightEnv } from './preflight-local-env'
 import { getPreflightWslTarget, type PreflightRuntimeContext } from './preflight-runtime-target'
 import { runPreflightCommandInWsl } from './preflight-wsl-command'
@@ -20,7 +18,6 @@ import { parseCodexDoctorReport } from './agent-codex-doctor-report'
 
 export { parseCodexDoctorChecks } from './agent-codex-doctor-report'
 
-const execFileAsync = promisify(execFile)
 const AGENT_HEALTH_TIMEOUT_MS = 12_000
 const AGENT_UPDATE_TIMEOUT_MS = 5 * 60_000
 const VERSION_PATTERN = /\d+\.\d+(?:\.\d+)?(?:[-+][\w.-]+)?/
@@ -73,13 +70,11 @@ async function runLocalCommand(
   const pathEnv = env?.PATH ?? env?.Path ?? process.env.PATH ?? process.env.Path
   const command =
     provider === 'codex' ? resolveCodexCommand({ pathEnv }) : resolveClaudeCommand({ pathEnv })
-  const { spawnCmd, spawnArgs } = getSpawnArgsForWindows(command, args)
-  return execFileAsync(spawnCmd, spawnArgs, {
-    encoding: 'utf-8',
-    timeout: timeoutMs,
-    windowsHide: true,
-    ...(env ? { env } : {})
-  }) as Promise<PreflightCommandResult>
+  const result = await runProcess({ program: command, args, timeoutMs, ...(env ? { env } : {}) })
+  if (result.timedOut || result.code !== 0) {
+    throw Object.assign(new Error(`Agent command failed: ${command}`), result)
+  }
+  return { stdout: result.stdout, stderr: result.stderr }
 }
 
 async function runAgentCommand(

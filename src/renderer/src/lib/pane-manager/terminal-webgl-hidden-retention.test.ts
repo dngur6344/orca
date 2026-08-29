@@ -10,7 +10,6 @@ import {
 
 function createPane(withAddon = true): ManagedPaneInternal {
   return {
-    xtermContainer: { dataset: {} },
     terminal: { blur: vi.fn() },
     webglAddon: withAddon
       ? ({ dispose: vi.fn() } as unknown as ManagedPaneInternal['webglAddon'])
@@ -48,7 +47,13 @@ describe('terminal-webgl-hidden-retention', () => {
     suspendPaneRendering(panes)
     expect(addon?.dispose).toHaveBeenCalled()
     expect(panes[0].webglAddon).toBeNull()
-    expect(panes[0].terminal.blur).not.toHaveBeenCalled()
+  })
+
+  // Why: the retained branch's blur is already pinned above; only the dispose branch changed.
+  it('blurs a suspended pane on the dispose branch', () => {
+    const panes = [createPane()]
+    suspendPaneRendering(panes)
+    expect(panes[0].terminal.blur).toHaveBeenCalledTimes(1)
   })
 
   it('evicts the least-recently-hidden owner over the context cap', () => {

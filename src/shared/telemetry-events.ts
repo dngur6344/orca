@@ -246,6 +246,7 @@ export const SETTINGS_CHANGED_WHITELIST = [
   'experimentalMobile',
   'experimentalPet',
   'experimentalNativeChat',
+  'experimentalStructuredNativeChat',
   'experimentalActivity',
   'experimentalAgentDashboardPopout',
   'experimentalTerminalAttention',
@@ -780,6 +781,11 @@ const agentHookInstallFailedSchema = z
 const agentHookUnattributedSchema = z
   .object({ reason: z.enum(['empty_pane_key', 'unknown_tab_id']) })
   .strict()
+
+// Why (#11217): loopback hook POSTs reset mid-body by local security software kill agent status for
+// every runtime at once. Count only — the truncated bodies carry user prompts and tool I/O, so
+// nothing derived from them may reach the wire.
+const agentHookTransportBlockedSchema = z.object({ count: z.number().int().nonnegative() }).strict()
 
 // ── Onboarding ──────────────────────────────────────────────────────────
 // Closed enums only — no raw paths/repo names/URLs/error strings (measures activation, not repo debugging).
@@ -1444,6 +1450,7 @@ export const eventSchemas = {
   agent_error: agentErrorSchema,
   agent_hook_install_failed: agentHookInstallFailedSchema,
   agent_hook_unattributed: agentHookUnattributedSchema,
+  agent_hook_transport_blocked: agentHookTransportBlockedSchema,
 
   daemon_start_failed: daemonStartFailedSchema,
   main_thread_hang_detected: mainThreadHangDetectedSchema,
