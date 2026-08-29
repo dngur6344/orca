@@ -1,16 +1,11 @@
 import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { installFakeAppEnvironment } from '../../config/scripts/vitest-host-ports-setup'
 
 let userDataDir: string
 let previousXdgDataHome: string | undefined
-
-vi.mock('electron', () => ({
-  app: {
-    getPath: () => userDataDir
-  }
-}))
 
 import { FLOATING_TERMINAL_WORKTREE_ID } from '../shared/constants'
 import { fishHistorySessionName } from './fish-history-session'
@@ -24,6 +19,7 @@ import { hashWorktreeId } from './terminal-history-paths'
 describe('floating terminal history GC', () => {
   beforeEach(() => {
     userDataDir = mkdtempSync(join(tmpdir(), 'orca-floating-history-gc-'))
+    installFakeAppEnvironment({ getPath: () => userDataDir })
     previousXdgDataHome = process.env.XDG_DATA_HOME
     process.env.XDG_DATA_HOME = join(userDataDir, 'xdg')
   })
