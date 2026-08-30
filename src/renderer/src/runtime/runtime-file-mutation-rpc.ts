@@ -5,11 +5,13 @@ import {
   captureRuntimeEnvironmentRequestRevision,
   getRuntimeEnvironmentRevision
 } from './runtime-environment-revision'
+import { getRuntimeEnvironmentConnectionGeneration } from '@/store/slices/runtime-status'
 
 type RuntimeFileMutationTarget = { kind: 'environment'; environmentId: string }
 export type RuntimeFileImportSession = {
   target: RuntimeFileMutationTarget
   expectedEnvironmentPairingRevision: number | undefined
+  expectedEnvironmentConnectionGeneration: number
   assertCurrent: () => void
 }
 
@@ -45,11 +47,19 @@ export async function callRuntimeFileMutation<TResult>(
 export function createRuntimeImportSessionGuard(
   environmentId: string,
   expectedEnvironmentPairingRevision: number | undefined,
+  expectedEnvironmentConnectionGeneration: number,
   assertCallerCurrent?: () => void
 ): () => void {
   return () => {
     if (getRuntimeEnvironmentRevision(environmentId) !== expectedEnvironmentPairingRevision) {
       throw new Error('Runtime pairing changed; retry the import.')
+    }
+    // Why: a replacement runtime keeps the pairing but invalidates its predecessor's capability proof.
+    if (
+      getRuntimeEnvironmentConnectionGeneration(environmentId) !==
+      expectedEnvironmentConnectionGeneration
+    ) {
+      throw new Error('Runtime connection changed; retry the import.')
     }
     assertCallerCurrent?.()
   }

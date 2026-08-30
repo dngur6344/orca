@@ -1,4 +1,5 @@
 import { basename, joinPath } from '@/lib/path'
+import { getRuntimeEnvironmentConnectionGeneration } from '@/store/slices/runtime-status'
 import type { RuntimeFileOperationArgs } from './runtime-file-client-types'
 import { captureRuntimeEnvironmentRequestRevision } from './runtime-environment-revision'
 import { runtimePathExists } from './runtime-file-metadata-client'
@@ -84,15 +85,20 @@ export async function importExternalPathsToRuntime(
   const expectedEnvironmentPairingRevision = captureRuntimeEnvironmentRequestRevision(
     target.environmentId
   )
+  await assertRuntimeFileMutationCapability(target, expectedEnvironmentPairingRevision)
+  const expectedEnvironmentConnectionGeneration = getRuntimeEnvironmentConnectionGeneration(
+    target.environmentId
+  )
   const assertImportSessionCurrent = createRuntimeImportSessionGuard(
     target.environmentId,
     expectedEnvironmentPairingRevision,
+    expectedEnvironmentConnectionGeneration,
     options?.assertCurrent
   )
-  await assertRuntimeFileMutationCapability(target, expectedEnvironmentPairingRevision)
   const importSession: RuntimeFileImportSession = {
     target,
     expectedEnvironmentPairingRevision,
+    expectedEnvironmentConnectionGeneration,
     assertCurrent: assertImportSessionCurrent
   }
   importSession.assertCurrent()

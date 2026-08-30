@@ -6,6 +6,10 @@ import {
 } from './runtime-rpc-client'
 import { replaceRuntimeEnvironmentRevisions } from './runtime-environment-revision'
 import {
+  clearRuntimeEnvironmentConnectionGenerationsForTests,
+  setRuntimeEnvironmentConnectionGenerationForTests
+} from '@/store/slices/runtime-status'
+import {
   FILE_MUTATION_OWNERSHIP_RUNTIME_CAPABILITY,
   MIN_COMPATIBLE_RUNTIME_CLIENT_VERSION,
   RUNTIME_PROTOCOL_VERSION
@@ -14,6 +18,8 @@ import {
 const ENVIRONMENT_ID = 'env-repaired'
 const CAPTURED_REVISION = 41
 const REPLACEMENT_REVISION = 42
+const CAPTURED_CONNECTION_GENERATION = 7
+const REPLACEMENT_CONNECTION_GENERATION = 8
 const runtimeEnvironmentCall = vi.fn()
 const stageExternalPathsForRuntimeUpload = vi.fn()
 const importExternalPaths = vi.fn()
@@ -130,7 +136,9 @@ function expectEveryRuntimeCallBoundToCapturedRevision(ownership: {
 
 beforeEach(() => {
   clearRuntimeCompatibilityCacheForTests()
+  clearRuntimeEnvironmentConnectionGenerationsForTests()
   setEnvironmentRevision(CAPTURED_REVISION)
+  setRuntimeEnvironmentConnectionGenerationForTests(ENVIRONMENT_ID, CAPTURED_CONNECTION_GENERATION)
   markRuntimeEnvironmentCompatible(ENVIRONMENT_ID)
   runtimeEnvironmentCall.mockReset()
   stageExternalPathsForRuntimeUpload.mockReset()
@@ -149,6 +157,44 @@ beforeEach(() => {
 })
 
 describe('runtime file import pairing revision', () => {
+  it('stops when the HUB runtime changes without a pairing change', async () => {
+    mockStagedFile('/client/screenshot.png', 'screenshot.png', `${'A'.repeat(512 * 1024)}BBBBBBBB`)
+    runtimeEnvironmentCall.mockImplementation(async (args: RuntimeCallArgs) => {
+      if (args.method === 'status.get') {
+        return runtimeStatusResponse()
+      }
+      if (args.method === 'files.stat') {
+        return missingRuntimePathResponse()
+      }
+      if (args.method === 'files.writeBase64Chunk') {
+        setRuntimeEnvironmentConnectionGenerationForTests(
+          ENVIRONMENT_ID,
+          REPLACEMENT_CONNECTION_GENERATION
+        )
+      }
+      return successfulRuntimeResponse(args.method)
+    })
+
+    await expect(
+      importExternalPathsToRuntime(nestedSshContext, ['/client/screenshot.png'], '/ssh/repo')
+    ).resolves.toMatchObject({
+      results: [{ status: 'failed', reason: 'Runtime connection changed; retry the import.' }]
+    })
+
+    expect(runtimeEnvironmentCall.mock.calls.map(([args]) => args.method)).toEqual([
+      'status.get',
+      'files.stat',
+      'files.writeBase64Chunk'
+    ])
+    expect(runtimeEnvironmentCall).not.toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'files.commitUpload' })
+    )
+    expect(runtimeEnvironmentCall).not.toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'files.delete' })
+    )
+    expectEveryRuntimeCallBoundToCapturedRevision(nestedSshContext)
+  })
+
   it('stops a global drop when the same-id HUB is re-paired during staging', async () => {
     runtimeEnvironmentCall.mockResolvedValue(runtimeStatusResponse())
     stageExternalPathsForRuntimeUpload.mockImplementation(async () => {
