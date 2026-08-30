@@ -157,6 +157,27 @@ beforeEach(() => {
 })
 
 describe('runtime file import pairing revision', () => {
+  it('rejects a runtime replacement published during the capability probe', async () => {
+    runtimeEnvironmentCall.mockImplementation(async (args: RuntimeCallArgs) => {
+      if (args.method === 'status.get') {
+        setRuntimeEnvironmentConnectionGenerationForTests(
+          ENVIRONMENT_ID,
+          REPLACEMENT_CONNECTION_GENERATION
+        )
+        return runtimeStatusResponse()
+      }
+      return successfulRuntimeResponse(args.method)
+    })
+
+    await expect(
+      importExternalPathsToRuntime(nestedSshContext, ['/client/drop.txt'], '/ssh/repo/uploads')
+    ).rejects.toThrow('Runtime connection changed; retry the import.')
+
+    expect(runtimeEnvironmentCall.mock.calls.map(([args]) => args.method)).toEqual(['status.get'])
+    expect(stageExternalPathsForRuntimeUpload).not.toHaveBeenCalled()
+    expectEveryRuntimeCallBoundToCapturedRevision(nestedSshContext)
+  })
+
   it('stops when the HUB runtime changes without a pairing change', async () => {
     mockStagedFile('/client/screenshot.png', 'screenshot.png', `${'A'.repeat(512 * 1024)}BBBBBBBB`)
     runtimeEnvironmentCall.mockImplementation(async (args: RuntimeCallArgs) => {
