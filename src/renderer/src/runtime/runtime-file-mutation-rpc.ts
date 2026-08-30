@@ -12,18 +12,20 @@ export type RuntimeFileImportSession = {
   target: RuntimeFileMutationTarget
   expectedEnvironmentPairingRevision: number | undefined
   expectedEnvironmentConnectionGeneration: number
+  expectedEnvironmentRuntimeId: string
   assertCurrent: () => void
 }
 
 export async function assertRuntimeFileMutationCapability(
   target: RuntimeFileMutationTarget,
   expectedEnvironmentPairingRevision: number | undefined
-): Promise<void> {
+): Promise<string> {
   const status = await callRuntimeRpc<RuntimeStatus>(target, 'status.get', undefined, {
     timeoutMs: 15_000,
     expectedEnvironmentPairingRevision
   })
   assertFileMutationOwnershipCapability(status)
+  return status.runtimeId
 }
 
 export async function callRuntimeFileMutation<TResult>(
@@ -74,6 +76,7 @@ export function callRuntimeFileImportMutation<TResult>(
   session.assertCurrent()
   return callRuntimeRpc<TResult>(session.target, method, params, {
     timeoutMs,
-    expectedEnvironmentPairingRevision: session.expectedEnvironmentPairingRevision
+    expectedEnvironmentPairingRevision: session.expectedEnvironmentPairingRevision,
+    expectedEnvironmentRuntimeId: session.expectedEnvironmentRuntimeId
   })
 }

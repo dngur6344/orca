@@ -88,7 +88,10 @@ export async function importExternalPathsToRuntime(
   const expectedEnvironmentConnectionGeneration = getRuntimeEnvironmentConnectionGeneration(
     target.environmentId
   )
-  await assertRuntimeFileMutationCapability(target, expectedEnvironmentPairingRevision)
+  const expectedEnvironmentRuntimeId = await assertRuntimeFileMutationCapability(
+    target,
+    expectedEnvironmentPairingRevision
+  )
   const assertImportSessionCurrent = createRuntimeImportSessionGuard(
     target.environmentId,
     expectedEnvironmentPairingRevision,
@@ -99,6 +102,7 @@ export async function importExternalPathsToRuntime(
     target,
     expectedEnvironmentPairingRevision,
     expectedEnvironmentConnectionGeneration,
+    expectedEnvironmentRuntimeId,
     assertCurrent: assertImportSessionCurrent
   }
   importSession.assertCurrent()

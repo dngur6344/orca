@@ -30,6 +30,7 @@ type RuntimeCallArgs = {
   params?: Record<string, unknown>
   timeoutMs?: number
   expectedEnvironmentPairingRevision?: number
+  expectedEnvironmentRuntimeId?: string
 }
 
 const nestedSshContext = {
@@ -58,6 +59,7 @@ function runtimeStatusResponse() {
     id: 'status',
     ok: true,
     result: {
+      runtimeId: 'hub-runtime',
       runtimeProtocolVersion: RUNTIME_PROTOCOL_VERSION,
       minCompatibleRuntimeClientVersion: MIN_COMPATIBLE_RUNTIME_CLIENT_VERSION,
       capabilities: [FILE_MUTATION_OWNERSHIP_RUNTIME_CAPABILITY]
@@ -121,6 +123,7 @@ function expectEveryRuntimeCallBoundToCapturedRevision(ownership: {
     expect(args.selector).toBe(ENVIRONMENT_ID)
     expect(args.expectedEnvironmentPairingRevision).toBe(CAPTURED_REVISION)
     if (args.method.startsWith('files.') && args.method !== 'files.stat') {
+      expect(args.expectedEnvironmentRuntimeId).toBe('hub-runtime')
       expect(args.params).toMatchObject({
         expectedExecutionHostId: ownership.expectedExecutionHostId,
         ...(ownership.expectedSshTargetId

@@ -169,7 +169,8 @@ describe('runtime file client', () => {
         expectedExecutionHostId: 'local'
       },
       timeoutMs: 15_000,
-      expectedEnvironmentPairingRevision: 17
+      expectedEnvironmentPairingRevision: 17,
+      expectedEnvironmentRuntimeId: 'remote-runtime'
     })
     expect(runtimeEnvironmentCall).toHaveBeenNthCalledWith(3, {
       selector: 'env-1',
@@ -190,7 +191,8 @@ describe('runtime file client', () => {
         expectedExecutionHostId: 'local'
       },
       timeoutMs: 15_000,
-      expectedEnvironmentPairingRevision: 17
+      expectedEnvironmentPairingRevision: 17,
+      expectedEnvironmentRuntimeId: 'remote-runtime'
     })
     const smallWriteCall = runtimeEnvironmentCall.mock.calls[4]?.[0] as {
       params: { relativePath: string }
@@ -210,7 +212,8 @@ describe('runtime file client', () => {
         expectedSshConnectionGeneration: undefined
       },
       timeoutMs: 30_000,
-      expectedEnvironmentPairingRevision: 17
+      expectedEnvironmentPairingRevision: 17,
+      expectedEnvironmentRuntimeId: 'remote-runtime'
     })
     expect(runtimeEnvironmentCall).toHaveBeenNthCalledWith(6, {
       selector: 'env-1',
@@ -224,7 +227,8 @@ describe('runtime file client', () => {
         expectedSshConnectionGeneration: undefined
       },
       timeoutMs: 30_000,
-      expectedEnvironmentPairingRevision: 17
+      expectedEnvironmentPairingRevision: 17,
+      expectedEnvironmentRuntimeId: 'remote-runtime'
     })
     expect(runtimeEnvironmentCall).toHaveBeenNthCalledWith(7, {
       selector: 'env-1',
@@ -238,7 +242,8 @@ describe('runtime file client', () => {
         expectedSshConnectionGeneration: undefined
       },
       timeoutMs: 15_000,
-      expectedEnvironmentPairingRevision: 17
+      expectedEnvironmentPairingRevision: 17,
+      expectedEnvironmentRuntimeId: 'remote-runtime'
     })
     const largeWriteCall = runtimeEnvironmentCall.mock.calls[7]?.[0] as {
       params: { relativePath: string }
@@ -259,7 +264,8 @@ describe('runtime file client', () => {
         expectedSshConnectionGeneration: undefined
       },
       timeoutMs: 30_000,
-      expectedEnvironmentPairingRevision: 17
+      expectedEnvironmentPairingRevision: 17,
+      expectedEnvironmentRuntimeId: 'remote-runtime'
     })
     expect(runtimeEnvironmentCall).toHaveBeenNthCalledWith(9, {
       selector: 'env-1',
@@ -274,7 +280,8 @@ describe('runtime file client', () => {
         expectedSshConnectionGeneration: undefined
       },
       timeoutMs: 30_000,
-      expectedEnvironmentPairingRevision: 17
+      expectedEnvironmentPairingRevision: 17,
+      expectedEnvironmentRuntimeId: 'remote-runtime'
     })
     expect(runtimeEnvironmentCall).toHaveBeenNthCalledWith(10, {
       selector: 'env-1',
@@ -288,7 +295,8 @@ describe('runtime file client', () => {
         expectedSshConnectionGeneration: undefined
       },
       timeoutMs: 30_000,
-      expectedEnvironmentPairingRevision: 17
+      expectedEnvironmentPairingRevision: 17,
+      expectedEnvironmentRuntimeId: 'remote-runtime'
     })
     expect(runtimeEnvironmentCall).toHaveBeenNthCalledWith(11, {
       selector: 'env-1',
@@ -302,7 +310,8 @@ describe('runtime file client', () => {
         expectedSshConnectionGeneration: undefined
       },
       timeoutMs: 15_000,
-      expectedEnvironmentPairingRevision: 17
+      expectedEnvironmentPairingRevision: 17,
+      expectedEnvironmentRuntimeId: 'remote-runtime'
     })
     expect(fsImportExternalPaths).not.toHaveBeenCalled()
   })
@@ -405,7 +414,9 @@ describe('runtime file client', () => {
         expectedSshTargetId: undefined,
         expectedSshConnectionGeneration: undefined
       },
-      timeoutMs: 30_000
+      timeoutMs: 30_000,
+      expectedEnvironmentPairingRevision: undefined,
+      expectedEnvironmentRuntimeId: 'remote-runtime'
     })
     expect(runtimeEnvironmentCall).toHaveBeenNthCalledWith(5, {
       selector: 'env-1',
@@ -419,7 +430,9 @@ describe('runtime file client', () => {
         expectedSshTargetId: undefined,
         expectedSshConnectionGeneration: undefined
       },
-      timeoutMs: 30_000
+      timeoutMs: 30_000,
+      expectedEnvironmentPairingRevision: undefined,
+      expectedEnvironmentRuntimeId: 'remote-runtime'
     })
     expect(runtimeEnvironmentCall).toHaveBeenNthCalledWith(6, {
       selector: 'env-1',
@@ -432,12 +445,13 @@ describe('runtime file client', () => {
         expectedSshTargetId: undefined,
         expectedSshConnectionGeneration: undefined
       },
-      timeoutMs: 30_000
+      timeoutMs: 30_000,
+      expectedEnvironmentPairingRevision: undefined,
+      expectedEnvironmentRuntimeId: 'remote-runtime'
     })
     expect(runtimeEnvironmentCall).toHaveBeenNthCalledWith(7, {
       selector: 'env-1',
       method: 'files.delete',
-      expectedEnvironmentPairingRevision: undefined,
       params: {
         worktree: 'id:wt-1',
         relativePath: chunkWriteCall.params.relativePath,
@@ -446,7 +460,9 @@ describe('runtime file client', () => {
         expectedSshTargetId: undefined,
         expectedSshConnectionGeneration: undefined
       },
-      timeoutMs: 15_000
+      timeoutMs: 15_000,
+      expectedEnvironmentPairingRevision: undefined,
+      expectedEnvironmentRuntimeId: 'remote-runtime'
     })
     expect(runtimeEnvironmentCall).not.toHaveBeenCalledWith(
       expect.objectContaining({ method: 'files.writeBase64' })
@@ -612,7 +628,9 @@ describe('runtime file client', () => {
         expectedSshTargetId: undefined,
         expectedSshConnectionGeneration: undefined
       },
-      timeoutMs: 15_000
+      timeoutMs: 15_000,
+      expectedEnvironmentPairingRevision: undefined,
+      expectedEnvironmentRuntimeId: 'remote-runtime'
     })
   })
 
@@ -699,7 +717,9 @@ describe('runtime file client', () => {
         recursive: true,
         expectedExecutionHostId: 'local'
       },
-      timeoutMs: 15_000
+      timeoutMs: 15_000,
+      expectedEnvironmentPairingRevision: undefined,
+      expectedEnvironmentRuntimeId: 'remote-runtime'
     })
   })
 

@@ -95,7 +95,7 @@ export async function callRuntimeEnvironment(
   timeoutMs?: number,
   expectedEnvironmentPairingRevision?: number,
   envelope?: RuntimeOrchestrationEnvelope,
-  options?: { signal?: AbortSignal }
+  options?: { signal?: AbortSignal; expectedEnvironmentRuntimeId?: string }
 ): Promise<RuntimeRpcResponse<unknown>> {
   const environment = resolveEnvironment(userDataPath, selector)
   // Why: connection failures reject (they don't resolve as ok:false), so the
@@ -113,7 +113,8 @@ export async function callRuntimeEnvironment(
         const revisionFailure = runtimeEnvironmentRevisionFailure(
           currentEnvironment,
           expectedEnvironmentPairingRevision,
-          method
+          method,
+          options?.expectedEnvironmentRuntimeId
         )
         if (revisionFailure) {
           return revisionFailure
