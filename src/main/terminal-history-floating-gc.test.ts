@@ -56,14 +56,14 @@ describe('floating terminal history GC', () => {
     const floatingDir = seedHistoryTree(historyRoot, FLOATING_TERMINAL_WORKTREE_ID)
     const orphanDir = seedHistoryTree(historyRoot, 'dead-wt')
 
-    runHistoryGc(new Set(['live-wt']))
+    await runHistoryGc(new Set(['live-wt']))
     await flushPendingWorktreeHistoryDeletions()
 
     expect(existsSync(floatingDir)).toBe(true)
     expect(existsSync(orphanDir)).toBe(false)
   })
 
-  it('preserves aged floating fish history while sweeping true orphans', () => {
+  it('preserves aged floating fish history while sweeping true orphans', async () => {
     const fishDir = join(process.env.XDG_DATA_HOME!, 'fish')
     const floatingFile = join(
       fishDir,
@@ -77,7 +77,7 @@ describe('floating terminal history GC', () => {
     utimesSync(floatingFile, old, old)
     utimesSync(orphanFile, old, old)
 
-    runHistoryGc(new Set(['live-wt']))
+    await runHistoryGc(new Set(['live-wt']))
 
     expect(existsSync(floatingFile)).toBe(true)
     expect(existsSync(orphanFile)).toBe(false)

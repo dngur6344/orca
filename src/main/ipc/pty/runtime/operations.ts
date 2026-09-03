@@ -34,8 +34,7 @@ export function writePtyFromRuntimeController(
     return false
   }
   try {
-    getProviderForPty(ptyId).write(ptyId, data)
-    return true
+    return getProviderForPty(ptyId).write(ptyId, data) !== false
   } catch {
     return false
   }
@@ -311,7 +310,7 @@ export function getSizeFromRuntimeController(ptyId: string) {
 
 export async function serializeProviderBufferFromRuntimeController(
   ptyId: string,
-  opts?: { scrollbackRows?: number; altScreenForcesZeroRows?: boolean }
+  opts?: { scrollbackRows?: number }
 ) {
   try {
     // Why: restored daemon PTYs can be live while their desktop pane is unmounted; query the provider model so phone-local navigation works.
