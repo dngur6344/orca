@@ -128,9 +128,7 @@ describe('runtime file client', () => {
     expect(fsStageExternalPathsForRuntimeUpload).toHaveBeenCalledWith({
       sourcePaths: ['/Users/me/assets']
     })
-    const transportCalls = runtimeEnvironmentTransportCall.mock.calls.map(
-      ([args]) => args as { method: string; expectedEnvironmentPairingRevision?: number }
-    )
+    const transportCalls = runtimeEnvironmentTransportCall.mock.calls.map(([args]) => args)
     expect(transportCalls.map((args) => args.method)).toEqual([
       'status.get',
       'status.get',
@@ -245,18 +243,23 @@ describe('runtime file client', () => {
       expectedEnvironmentPairingRevision: 17,
       expectedEnvironmentRuntimeId: 'remote-runtime'
     })
-    const largeWriteCall = runtimeEnvironmentCall.mock.calls[7]?.[0] as {
-      params: { relativePath: string }
+    const largeWriteParams = runtimeEnvironmentCall.mock.calls[7]?.[0].params
+    if (
+      typeof largeWriteParams !== 'object' ||
+      largeWriteParams === null ||
+      !('relativePath' in largeWriteParams) ||
+      typeof largeWriteParams.relativePath !== 'string'
+    ) {
+      throw new Error('missing large file write call')
     }
-    expect(largeWriteCall.params.relativePath).toMatch(
-      /^uploads\/assets\/\.large\.bin\.orca-upload-/
-    )
+    const largeWriteRelativePath = largeWriteParams.relativePath
+    expect(largeWriteRelativePath).toMatch(/^uploads\/assets\/\.large\.bin\.orca-upload-/)
     expect(runtimeEnvironmentCall).toHaveBeenNthCalledWith(8, {
       selector: 'env-1',
       method: 'files.writeBase64Chunk',
       params: {
         worktree: 'id:wt-1',
-        relativePath: largeWriteCall.params.relativePath,
+        relativePath: largeWriteRelativePath,
         contentBase64: firstChunk,
         append: false,
         expectedExecutionHostId: 'local',
@@ -272,7 +275,7 @@ describe('runtime file client', () => {
       method: 'files.writeBase64Chunk',
       params: {
         worktree: 'id:wt-1',
-        relativePath: largeWriteCall.params.relativePath,
+        relativePath: largeWriteRelativePath,
         contentBase64: secondChunk,
         append: true,
         expectedExecutionHostId: 'local',
@@ -288,7 +291,7 @@ describe('runtime file client', () => {
       method: 'files.commitUpload',
       params: {
         worktree: 'id:wt-1',
-        tempRelativePath: largeWriteCall.params.relativePath,
+        tempRelativePath: largeWriteRelativePath,
         finalRelativePath: 'uploads/assets/large.bin',
         expectedExecutionHostId: 'local',
         expectedSshTargetId: undefined,
@@ -303,7 +306,7 @@ describe('runtime file client', () => {
       method: 'files.delete',
       params: {
         worktree: 'id:wt-1',
-        relativePath: largeWriteCall.params.relativePath,
+        relativePath: largeWriteRelativePath,
         recursive: false,
         expectedExecutionHostId: 'local',
         expectedSshTargetId: undefined,

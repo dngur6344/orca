@@ -20,9 +20,6 @@ const CAPTURED_REVISION = 41
 const REPLACEMENT_REVISION = 42
 const CAPTURED_CONNECTION_GENERATION = 7
 const REPLACEMENT_CONNECTION_GENERATION = 8
-const runtimeEnvironmentCall = vi.fn()
-const stageExternalPathsForRuntimeUpload = vi.fn()
-const importExternalPaths = vi.fn()
 
 type RuntimeCallArgs = {
   selector: string
@@ -32,6 +29,10 @@ type RuntimeCallArgs = {
   expectedEnvironmentPairingRevision?: number
   expectedEnvironmentRuntimeId?: string
 }
+
+const runtimeEnvironmentCall = vi.fn<(args: RuntimeCallArgs) => unknown>()
+const stageExternalPathsForRuntimeUpload = vi.fn()
+const importExternalPaths = vi.fn()
 
 const nestedSshContext = {
   settings: { activeRuntimeEnvironmentId: ENVIRONMENT_ID },
@@ -117,7 +118,7 @@ function expectEveryRuntimeCallBoundToCapturedRevision(ownership: {
   expectedSshTargetId?: string
   expectedSshConnectionGeneration?: number
 }): void {
-  const calls = runtimeEnvironmentCall.mock.calls as [RuntimeCallArgs][]
+  const calls = runtimeEnvironmentCall.mock.calls
   expect(calls.filter(([args]) => args.method === 'status.get')).toHaveLength(1)
   for (const [args] of calls) {
     expect(args.selector).toBe(ENVIRONMENT_ID)
