@@ -8,10 +8,21 @@ const mocks = vi.hoisted(() => {
   const refreshDetectedAgents = vi.fn(async () => ['claude'])
   const refreshAgentHealth = vi.fn(async () => [])
   const updateAgent = vi.fn(async () => null)
+  const useAgentHealth = vi.fn(() => ({
+    snapshots: [],
+    isProbing: false,
+    pendingProviders: {},
+    loadError: false,
+    updateStates: {},
+    refresh: refreshAgentHealth,
+    check: vi.fn(),
+    update: updateAgent
+  }))
   return {
     refreshDetectedAgents,
     refreshAgentHealth,
     updateAgent,
+    useAgentHealth,
     watchProviderAccounts: vi.fn(() => ({ close: vi.fn() })),
     store: {
       settings: {
@@ -52,16 +63,7 @@ vi.mock('@/runtime/runtime-provider-accounts-client', () => ({
   watchProviderAccounts: mocks.watchProviderAccounts
 }))
 vi.mock('./use-agent-health', () => ({
-  useAgentHealth: () => ({
-    snapshots: [],
-    isProbing: false,
-    pendingProviders: {},
-    loadError: false,
-    updateStates: {},
-    refresh: mocks.refreshAgentHealth,
-    check: vi.fn(),
-    update: mocks.updateAgent
-  })
+  useAgentHealth: mocks.useAgentHealth
 }))
 vi.mock('@/i18n/i18n', () => ({
   translate: (_key: string, fallback: string) => fallback
@@ -86,6 +88,7 @@ describe('AgentStatusSegment polling', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     mocks.refreshDetectedAgents.mockClear()
+    mocks.useAgentHealth.mockClear()
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
@@ -108,5 +111,9 @@ describe('AgentStatusSegment polling', () => {
     })
 
     expect(mocks.refreshDetectedAgents).toHaveBeenCalledOnce()
+  })
+
+  it('probes health only for installed or linked providers', () => {
+    expect(mocks.useAgentHealth).toHaveBeenCalledWith(null, true, ['claude'])
   })
 })

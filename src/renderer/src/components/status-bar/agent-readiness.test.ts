@@ -78,6 +78,7 @@ function rateLimits(overrides: Partial<RateLimitState> = {}): RateLimitState {
     minimax: null,
     grok: null,
     minimaxCookieConfigured: false,
+    minimaxApiKeyConfigured: false,
     grokAuthConfigured: false,
     claudeTarget: { runtime: 'host', wslDistro: null },
     codexTarget: { runtime: 'host', wslDistro: null },

@@ -140,16 +140,6 @@ export function AgentStatusSegment({
   }, [activeRuntimeEnvironmentId, settings])
   const detectedAgents = useDetectedAgents(detectionTarget)
   const refreshDetectedAgents = detectedAgents.refresh
-  const {
-    snapshots: healthSnapshots,
-    isProbing: healthPending,
-    pendingProviders: healthPendingProviders,
-    loadError: healthLoadError,
-    updateStates,
-    refresh: refreshAgentHealth,
-    check: checkAgentHealth,
-    update: updateAgent
-  } = useAgentHealth(activeRuntimeEnvironmentId, detectionTargetReady)
   const [snapshot, setSnapshot] = useState<ProviderAccountsSnapshot | null>(null)
   const [accountLoadError, setAccountLoadError] = useState(false)
   const [detectionLoadError, setDetectionLoadError] = useState(false)
@@ -210,17 +200,35 @@ export function AgentStatusSegment({
         systemDefault: snapshot?.codex.systemDefault ?? localCodexAccounts.systemDefault
       }
   const rateLimits = activeRuntimeEnvironmentId ? (snapshot?.rateLimits ?? null) : localRateLimits
+  const detectionPending = detectedAgents.isLoading || detectedAgents.isRefreshing
   const providers = buildAgentReadiness({
     claudeAccounts,
     codexAccounts,
     rateLimits,
     detectedAgentIds: detectedAgents.detectedIds,
-    detectionPending: detectedAgents.isLoading || detectedAgents.isRefreshing,
+    detectionPending,
     systemDefaultLabel: translate(
       'auto.components.status.bar.StatusBar.c676918adc',
       'System default'
     )
   }).filter(shouldShowAgentReadiness)
+  const healthProviders = providers.flatMap((provider) =>
+    provider.installed === true ||
+    provider.linkedAccountCount > 0 ||
+    (!detectionPending && provider.installed === null)
+      ? [provider.provider]
+      : []
+  )
+  const {
+    snapshots: healthSnapshots,
+    isProbing: healthPending,
+    pendingProviders: healthPendingProviders,
+    loadError: healthLoadError,
+    updateStates,
+    refresh: refreshAgentHealth,
+    check: checkAgentHealth,
+    update: updateAgent
+  } = useAgentHealth(activeRuntimeEnvironmentId, detectionTargetReady, healthProviders)
   const measuredOverall = getOverallAgentConnectionState(
     providers,
     healthSnapshots,

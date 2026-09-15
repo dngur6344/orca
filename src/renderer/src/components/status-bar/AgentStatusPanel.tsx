@@ -1,5 +1,6 @@
 import { RefreshCw } from 'lucide-react'
-import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { Button } from '@/components/ui/button'
+import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { SettingsSegmentedControl } from '@/components/settings/SettingsFormControls'
 import { translate } from '@/i18n/i18n'
 import { ClaudeIcon, OpenAIIcon } from './icons'
@@ -285,19 +286,18 @@ export function AgentStatusPanel({
           </div>
           <div className="truncate text-[10px] text-muted-foreground">{ownerLabel}</div>
         </div>
-        <DropdownMenuItem
-          onSelect={(event) => {
-            event.preventDefault()
-            onRefresh()
-          }}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          onClick={onRefresh}
           aria-label={translate(
             'auto.components.status.bar.AgentStatusPanel.refresh',
             'Refresh agent status'
           )}
-          className="size-5 justify-center p-0"
         >
           <RefreshCw className={`size-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-        </DropdownMenuItem>
+        </Button>
       </div>
       <div className="px-3.5 pb-2.5">
         <SettingsSegmentedControl<StatusBarUsageMode>
@@ -349,10 +349,8 @@ export function AgentStatusPanel({
           />
         ))}
       </div>
-      <DropdownMenuItem
-        onSelect={onManageAccounts}
-        className="w-full cursor-pointer rounded-none border-t border-border/70 px-3.5 py-2.5 text-[13px] text-foreground"
-      >
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onSelect={onManageAccounts} className="w-full cursor-pointer">
         {translate('auto.components.status.bar.StatusBar.75ded02687', 'Manage Accounts…')}
       </DropdownMenuItem>
     </div>

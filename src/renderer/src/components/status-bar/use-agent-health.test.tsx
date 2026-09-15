@@ -29,9 +29,9 @@ vi.mock('@/runtime/runtime-rpc-client', () => ({
   RuntimeRpcCallError: class extends Error {
     code: string
 
-    constructor(code: string) {
-      super(code)
-      this.code = code
+    constructor(response: { error: { code: string; message: string } }) {
+      super(response.error.message)
+      this.code = response.error.code
     }
   }
 }))
@@ -45,8 +45,6 @@ function snapshot(provider: AgentHealthProvider): AgentHealthSnapshot {
     cliStatus: 'available',
     health: 'healthy',
     version: provider === 'codex' ? '0.146.1' : '1.0.61',
-    durationMs: 10,
-    checkedAt: 1,
     checks: [{ id: 'cli', status: 'ok' }],
     updateAvailability: 'current',
     updateSupported: true
@@ -55,12 +53,14 @@ function snapshot(provider: AgentHealthProvider): AgentHealthSnapshot {
 
 function Harness({
   enabled = true,
-  environmentId = null
+  environmentId = null,
+  providers
 }: {
   enabled?: boolean
   environmentId?: string | null
+  providers?: readonly AgentHealthProvider[]
 }): React.JSX.Element {
-  const health = useAgentHealth(environmentId, enabled)
+  const health = useAgentHealth(environmentId, enabled, providers)
   return (
     <>
       <span data-testid="claude-version">
@@ -94,13 +94,17 @@ describe('useAgentHealth', () => {
     )
     mocks.updateAgent.mockClear()
     mocks.callRuntimeRpc.mockReset()
-    window.api = {
-      preflight: {
-        probeAgentHealth: mocks.probeAgentHealth,
-        probeAgentHealthProvider: mocks.probeAgentHealthProvider,
-        updateAgent: mocks.updateAgent
+    Object.defineProperty(window, 'api', {
+      configurable: true,
+      writable: true,
+      value: {
+        preflight: {
+          probeAgentHealth: mocks.probeAgentHealth,
+          probeAgentHealthProvider: mocks.probeAgentHealthProvider,
+          updateAgent: mocks.updateAgent
+        }
       }
-    } as never
+    })
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
@@ -148,6 +152,13 @@ describe('useAgentHealth', () => {
     await act(async () => resolveClaude(snapshot('claude')))
   })
 
+  it('probes only providers shown by the status surface', async () => {
+    await act(async () => root.render(<Harness providers={['codex']} />))
+
+    expect(mocks.probeAgentHealthProvider).toHaveBeenCalledOnce()
+    expect(mocks.probeAgentHealthProvider).toHaveBeenCalledWith({ provider: 'codex' })
+  })
+
   it('waits until the settings target is ready', async () => {
     await act(async () => root.render(<Harness enabled={false} />))
 
@@ -170,11 +181,16 @@ describe('useAgentHealth', () => {
 
   it('falls back to one aggregate probe for an older remote runtime', async () => {
     const snapshots = [snapshot('claude'), snapshot('codex')]
-    mocks.callRuntimeRpc.mockImplementation(
-      (_target: unknown, method: string): Promise<unknown> =>
-        method === 'preflight.probeAgentHealthProvider'
-          ? Promise.reject(new RuntimeRpcCallError('method_not_found' as never))
-          : Promise.resolve(snapshots)
+    mocks.callRuntimeRpc.mockImplementation((_target: unknown, method: string): Promise<unknown> =>
+      method === 'preflight.probeAgentHealthProvider'
+        ? Promise.reject(
+            new RuntimeRpcCallError({
+              id: 'request-1',
+              ok: false,
+              error: { code: 'method_not_found', message: 'Unknown method' }
+            })
+          )
+        : Promise.resolve(snapshots)
     )
 
     await act(async () => root.render(<Harness environmentId="runtime-1" />))

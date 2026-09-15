@@ -1,5 +1,4 @@
-import { z } from 'zod'
-import { defineMethod, type RpcMethod } from '../core'
+import { defineMethod } from '../core'
 import {
   detectRemoteAgents,
   detectRemoteWindowsTerminalCapabilities,
@@ -12,21 +11,14 @@ import {
   probeAgentProviderHealth,
   updateAgent
 } from '../../../ipc/agent-health-probe'
+import {
+  PreflightAgentHealthProvider,
+  PreflightCheck,
+  PreflightDetectRemoteAgents,
+  PreflightDetectRemoteWindowsTerminalCapabilities
+} from '../../../../shared/rpc-contract/preflight-params'
 
-const PreflightCheck = z.object({
-  force: z.boolean().optional()
-})
-const PreflightDetectRemoteAgents = z.object({
-  connectionId: z.string().min(1)
-})
-const PreflightDetectRemoteWindowsTerminalCapabilities = z.object({
-  connectionId: z.string().min(1)
-})
-const PreflightUpdateAgent = z.object({
-  provider: z.enum(['claude', 'codex'])
-})
-
-export const PREFLIGHT_METHODS: RpcMethod[] = [
+export const PREFLIGHT_METHODS = [
   defineMethod({
     name: 'preflight.check',
     params: PreflightCheck,
@@ -59,12 +51,12 @@ export const PREFLIGHT_METHODS: RpcMethod[] = [
   }),
   defineMethod({
     name: 'preflight.probeAgentHealthProvider',
-    params: PreflightUpdateAgent,
+    params: PreflightAgentHealthProvider,
     handler: async (params) => probeAgentProviderHealth(params.provider)
   }),
   defineMethod({
     name: 'preflight.updateAgent',
-    params: PreflightUpdateAgent,
+    params: PreflightAgentHealthProvider,
     handler: async (params) => updateAgent(params.provider)
   })
 ]

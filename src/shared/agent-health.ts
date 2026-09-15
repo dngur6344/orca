@@ -22,8 +22,6 @@ export type AgentHealthSnapshot = {
   cliStatus: AgentCliStatus
   health: AgentHealthState
   version: string | null
-  durationMs: number
-  checkedAt: number
   checks: AgentHealthCheck[]
   latestVersion?: string | null
   updateAvailability?: AgentUpdateAvailability

@@ -42,6 +42,11 @@ function makeRequest(method: string, params?: unknown): RpcRequest {
   return { id: 'req-1', authToken: 'tok', method, params }
 }
 
+function makeRuntime(): OrcaRuntimeService {
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: these handlers only read getRuntimeId from the dispatcher context.
+  return { getRuntimeId: () => 'test-runtime' } as unknown as OrcaRuntimeService
+}
+
 describe('preflight RPC methods', () => {
   it('runs the server-side preflight check through runtime RPC', async () => {
     const status = {
@@ -51,7 +56,7 @@ describe('preflight RPC methods', () => {
       bitbucket: { configured: false, authenticated: false, account: null }
     }
     runPreflightCheckMock.mockResolvedValueOnce(status)
-    const runtime = { getRuntimeId: () => 'test-runtime' } as unknown as OrcaRuntimeService
+    const runtime = makeRuntime()
     const dispatcher = new RpcDispatcher({ runtime, methods: PREFLIGHT_METHODS })
 
     const response = await dispatcher.dispatch(makeRequest('preflight.check', { force: true }))
@@ -69,7 +74,7 @@ describe('preflight RPC methods', () => {
       pathSource: 'shell_hydrate',
       pathFailureReason: 'none'
     })
-    const runtime = { getRuntimeId: () => 'test-runtime' } as unknown as OrcaRuntimeService
+    const runtime = makeRuntime()
     const dispatcher = new RpcDispatcher({ runtime, methods: PREFLIGHT_METHODS })
 
     const detected = await dispatcher.dispatch(makeRequest('preflight.detectAgents'))
@@ -91,13 +96,11 @@ describe('preflight RPC methods', () => {
         cliStatus: 'available',
         health: 'healthy',
         version: '0.146.1',
-        durationMs: 120,
-        checkedAt: 1000,
         checks: [{ id: 'cli', status: 'ok' }]
       }
     ]
     probeAgentHealthMock.mockResolvedValueOnce(snapshots)
-    const runtime = { getRuntimeId: () => 'test-runtime' } as unknown as OrcaRuntimeService
+    const runtime = makeRuntime()
     const dispatcher = new RpcDispatcher({ runtime, methods: PREFLIGHT_METHODS })
 
     const response = await dispatcher.dispatch(makeRequest('preflight.probeAgentHealth'))
@@ -114,7 +117,7 @@ describe('preflight RPC methods', () => {
       currentVersion: '0.147.0'
     }
     updateAgentMock.mockResolvedValueOnce(result)
-    const runtime = { getRuntimeId: () => 'test-runtime' } as unknown as OrcaRuntimeService
+    const runtime = makeRuntime()
     const dispatcher = new RpcDispatcher({ runtime, methods: PREFLIGHT_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -131,12 +134,10 @@ describe('preflight RPC methods', () => {
       cliStatus: 'available',
       health: 'healthy',
       version: '1.0.61',
-      durationMs: 80,
-      checkedAt: 1000,
       checks: [{ id: 'cli', status: 'ok' }]
     }
     probeAgentProviderHealthMock.mockResolvedValueOnce(snapshot)
-    const runtime = { getRuntimeId: () => 'test-runtime' } as unknown as OrcaRuntimeService
+    const runtime = makeRuntime()
     const dispatcher = new RpcDispatcher({ runtime, methods: PREFLIGHT_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -149,7 +150,7 @@ describe('preflight RPC methods', () => {
 
   it('detects agents on remote SSH connections through runtime RPC', async () => {
     detectRemoteAgentsMock.mockResolvedValueOnce(['claude'])
-    const runtime = { getRuntimeId: () => 'test-runtime' } as unknown as OrcaRuntimeService
+    const runtime = makeRuntime()
     const dispatcher = new RpcDispatcher({ runtime, methods: PREFLIGHT_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -168,7 +169,7 @@ describe('preflight RPC methods', () => {
       gitBashAvailable: true,
       hostPlatform: 'win32'
     })
-    const runtime = { getRuntimeId: () => 'test-runtime' } as unknown as OrcaRuntimeService
+    const runtime = makeRuntime()
     const dispatcher = new RpcDispatcher({ runtime, methods: PREFLIGHT_METHODS })
 
     const response = await dispatcher.dispatch(

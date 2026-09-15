@@ -43,6 +43,7 @@ describe('agent health probe', () => {
       }
       const error = Object.assign(new Error('doctor reported a failed check'), {
         stdout: JSON.stringify({
+          codexVersion: '0.146.1',
           checks: {
             'auth.credentials': { status: 'ok' },
             'network.provider_reachability': { status: 'ok' },
@@ -61,11 +62,16 @@ describe('agent health probe', () => {
 
     const snapshots = await probeAgentHealth(undefined, { runCommand, resolveClaudeVersion })
 
-    expect(runCommand).toHaveBeenCalledTimes(6)
+    expect(runCommand).toHaveBeenCalledTimes(5)
     expect(resolveClaudeVersion).toHaveBeenCalledWith('stable')
     expect(
       runCommand.mock.calls.some(
         ([provider, args]) => provider === 'claude' && args[0] === 'doctor'
+      )
+    ).toBe(false)
+    expect(
+      runCommand.mock.calls.some(
+        ([provider, args]) => provider === 'codex' && args[0] === '--version'
       )
     ).toBe(false)
     expect(snapshots).toMatchObject([
@@ -119,7 +125,7 @@ describe('agent health probe', () => {
     })
   })
 
-  it('reports an unavailable CLI without attempting its deeper checks', async () => {
+  it('reports an unavailable CLI without checking its updater', async () => {
     const runCommand = vi.fn(async (provider: 'claude' | 'codex', _args: string[]) => {
       if (provider === 'codex') {
         throw new Error('not found')
@@ -136,6 +142,11 @@ describe('agent health probe', () => {
     const codex = snapshots.find((snapshot) => snapshot.provider === 'codex')
 
     expect(resolveClaudeVersion).toHaveBeenCalledWith('latest')
+    expect(
+      runCommand.mock.calls.some(
+        ([provider, args]) => provider === 'claude' && args[0] === 'update'
+      )
+    ).toBe(false)
     expect(claude).toMatchObject({ updateAvailability: 'current' })
     expect(codex).toMatchObject({
       cliStatus: 'unavailable',
@@ -144,7 +155,7 @@ describe('agent health probe', () => {
       checks: [{ id: 'cli', status: 'failed' }]
     })
     expect(
-      runCommand.mock.calls.some(([provider, args]) => provider === 'codex' && args[0] === 'doctor')
+      runCommand.mock.calls.some(([provider, args]) => provider === 'codex' && args[0] === 'update')
     ).toBe(false)
   })
 

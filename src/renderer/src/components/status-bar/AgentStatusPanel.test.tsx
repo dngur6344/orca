@@ -7,12 +7,21 @@ import type { AgentUpdateUiState } from './use-agent-health'
 vi.mock('@/i18n/i18n', () => ({
   translate: (_key: string, fallback: string) => fallback
 }))
+vi.mock('@/components/ui/button', () => ({
+  Button: ({
+    children,
+    ...props
+  }: React.PropsWithChildren<React.ButtonHTMLAttributes<HTMLButtonElement>>) => (
+    <button {...props}>{children}</button>
+  )
+}))
 vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenuItem: ({
     children,
     onSelect: _onSelect,
     ...props
-  }: React.PropsWithChildren<{ onSelect?: () => void }>) => <div {...props}>{children}</div>
+  }: React.PropsWithChildren<{ onSelect?: () => void }>) => <div {...props}>{children}</div>,
+  DropdownMenuSeparator: () => <hr />
 }))
 vi.mock('./tooltip', () => ({ formatTimeAgo: () => 'just now' }))
 
@@ -68,8 +77,6 @@ const healthSnapshots: AgentHealthSnapshot[] = [
     cliStatus: 'available',
     health: 'healthy',
     version: '1.0.61',
-    durationMs: 42,
-    checkedAt: 3,
     checks: [{ id: 'cli', status: 'ok' }],
     latestVersion: null,
     updateAvailability: 'unknown',

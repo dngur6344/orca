@@ -7,7 +7,6 @@ import type {
 import type { StatusBarUsageMode } from '../../../../shared/status-bar-usage-mode'
 import { translate } from '@/i18n/i18n'
 import { Button } from '@/components/ui/button'
-import { formatTimeAgo } from './tooltip'
 import type { AgentReadinessState } from './agent-readiness'
 import type { AgentUpdateUiState } from './use-agent-health'
 
@@ -177,7 +176,6 @@ export function AgentHealthRows({
   onCheck: (provider: AgentHealthProvider) => void
   onUpdate: (provider: AgentHealthProvider) => void
 }): React.JSX.Element {
-  const checked = snapshot ? formatTimeAgo(snapshot.checkedAt) : null
   return (
     <div className="px-3.5 pb-1.5">
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-md bg-secondary/60 px-2.5 py-2">
@@ -198,14 +196,8 @@ export function AgentHealthRows({
           </span>
         </div>
         {snapshot?.version ? (
-          <div className="col-span-2 flex min-w-0 items-center gap-1.5 text-[10px] text-muted-foreground">
-            <span>v{snapshot.version}</span>
-            {checked ? (
-              <>
-                <span aria-hidden="true">·</span>
-                <span>{checked}</span>
-              </>
-            ) : null}
+          <div className="col-span-2 min-w-0 text-[10px] text-muted-foreground">
+            v{snapshot.version}
           </div>
         ) : null}
         {snapshot && snapshot.cliStatus === 'available' ? (

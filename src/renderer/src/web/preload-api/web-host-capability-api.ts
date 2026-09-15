@@ -53,8 +53,6 @@ export function createPreflightApi(): NonNullable<Partial<PreloadApi>['preflight
     cliStatus: 'unavailable',
     health: 'unknown',
     version: null,
-    durationMs: 0,
-    checkedAt: 0,
     checks: [],
     latestVersion: null,
     updateAvailability: 'unknown',

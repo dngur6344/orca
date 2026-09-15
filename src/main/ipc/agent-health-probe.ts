@@ -31,7 +31,6 @@ type CommandRunner = (
 
 type AgentCommandDependencies = {
   runCommand?: CommandRunner
-  now?: () => number
   resolveClaudeVersion?: (channel: ClaudeUpdateChannel) => Promise<string | null>
 }
 
@@ -106,36 +105,59 @@ function updateAvailability(
   return compareAppVersions(version, latestVersion) < 0 ? 'available' : 'current'
 }
 
-function claudeUpdateChannel(
-  result: PromiseSettledResult<PreflightCommandResult>
-): ClaudeUpdateChannel {
-  return result.status === 'fulfilled' && result.value.stdout.trim() === 'stable'
-    ? 'stable'
-    : 'latest'
+function claudeUpdateChannel(result: PreflightCommandResult | null): ClaudeUpdateChannel {
+  return result?.stdout.trim() === 'stable' ? 'stable' : 'latest'
+}
+
+async function probeUpdateSupport(
+  provider: AgentHealthProvider,
+  context: PreflightRuntimeContext | undefined,
+  runCommand: CommandRunner,
+  availability: AgentUpdateAvailability
+): Promise<boolean | undefined> {
+  if (availability !== 'available') {
+    return undefined
+  }
+  try {
+    await runCommand(provider, ['update', '--help'], context, AGENT_HEALTH_TIMEOUT_MS)
+    return true
+  } catch {
+    return false
+  }
 }
 
 async function probeProvider(
   provider: AgentHealthProvider,
   context: PreflightRuntimeContext | undefined,
   runCommand: CommandRunner,
-  resolveClaudeVersion: (channel: ClaudeUpdateChannel) => Promise<string | null>,
-  now: () => number
+  resolveClaudeVersion: (channel: ClaudeUpdateChannel) => Promise<string | null>
 ): Promise<AgentHealthSnapshot> {
-  const startedAt = now()
-  let version: string | null = null
+  let codexReport: ReturnType<typeof parseCodexDoctorReport> = null
+  if (provider === 'codex') {
+    let doctorOutput: string | null = null
+    try {
+      doctorOutput = (
+        await runCommand(provider, ['doctor', '--json'], context, AGENT_HEALTH_TIMEOUT_MS)
+      ).stdout
+    } catch (error) {
+      doctorOutput = commandOutputFromError(error)
+    }
+    codexReport = doctorOutput ? parseCodexDoctorReport(doctorOutput) : null
+  }
+
+  let version = codexReport?.currentVersion ?? null
   try {
-    version = versionFromOutput(
-      await runCommand(provider, ['--version'], context, AGENT_HEALTH_TIMEOUT_MS)
-    )
+    if (!version) {
+      version = versionFromOutput(
+        await runCommand(provider, ['--version'], context, AGENT_HEALTH_TIMEOUT_MS)
+      )
+    }
   } catch {
-    const checkedAt = now()
     return {
       provider,
       cliStatus: 'unavailable',
       health: 'unhealthy',
       version: null,
-      durationMs: Math.max(0, checkedAt - startedAt),
-      checkedAt,
       checks: [{ id: 'cli', status: 'failed' }],
       latestVersion: null,
       updateAvailability: 'unknown',
@@ -144,59 +166,45 @@ async function probeProvider(
   }
 
   const checks: AgentHealthCheck[] = [{ id: 'cli', status: 'ok' }]
-  let latestVersion: string | null = null
-  const updateSupportPromise = runCommand(
-    provider,
-    ['update', '--help'],
-    context,
-    AGENT_HEALTH_TIMEOUT_MS
-  )
   if (provider === 'codex') {
-    const [doctorAttempt, updateSupportAttempt] = await Promise.allSettled([
-      runCommand(provider, ['doctor', '--json'], context, AGENT_HEALTH_TIMEOUT_MS),
-      updateSupportPromise
-    ])
-    const doctorOutput =
-      doctorAttempt.status === 'fulfilled'
-        ? doctorAttempt.value.stdout
-        : commandOutputFromError(doctorAttempt.reason)
-    const report = doctorOutput ? parseCodexDoctorReport(doctorOutput) : null
-    if (report) {
-      checks.push(...report.checks)
-      latestVersion = report.latestVersion
+    if (codexReport) {
+      checks.push(...codexReport.checks)
     }
-    const checkedAt = now()
+    const latestVersion = codexReport?.latestVersion ?? null
+    const availability = updateAvailability(version, latestVersion)
+    const updateSupported = await probeUpdateSupport(provider, context, runCommand, availability)
     return {
       provider,
       cliStatus: 'available',
-      health: report ? healthFromChecks(checks) : 'unknown',
+      health: codexReport ? healthFromChecks(checks) : 'unknown',
       version,
-      durationMs: Math.max(0, checkedAt - startedAt),
-      checkedAt,
       checks,
       latestVersion,
-      updateAvailability: updateAvailability(version, latestVersion),
-      updateSupported: updateSupportAttempt.status === 'fulfilled'
+      updateAvailability: availability,
+      ...(updateSupported === undefined ? {} : { updateSupported })
     }
   }
 
-  const [updateSupportAttempt, channelAttempt] = await Promise.allSettled([
-    updateSupportPromise,
-    runCommand(provider, ['config', 'get', 'autoUpdatesChannel'], context, AGENT_HEALTH_TIMEOUT_MS)
-  ])
-  latestVersion = await resolveClaudeVersion(claudeUpdateChannel(channelAttempt)).catch(() => null)
-  const checkedAt = now()
+  const channelResult = await runCommand(
+    provider,
+    ['config', 'get', 'autoUpdatesChannel'],
+    context,
+    AGENT_HEALTH_TIMEOUT_MS
+  ).catch(() => null)
+  const latestVersion = await resolveClaudeVersion(claudeUpdateChannel(channelResult)).catch(
+    () => null
+  )
+  const availability = updateAvailability(version, latestVersion)
+  const updateSupported = await probeUpdateSupport(provider, context, runCommand, availability)
   return {
     provider,
     cliStatus: 'available',
     health: healthFromChecks(checks),
     version,
-    durationMs: Math.max(0, checkedAt - startedAt),
-    checkedAt,
     checks,
     latestVersion,
-    updateAvailability: updateAvailability(version, latestVersion),
-    updateSupported: updateSupportAttempt.status === 'fulfilled'
+    updateAvailability: availability,
+    ...(updateSupported === undefined ? {} : { updateSupported })
   }
 }
 
@@ -217,9 +225,8 @@ export function probeAgentProviderHealth(
   dependencies: AgentCommandDependencies = {}
 ): Promise<AgentHealthSnapshot> {
   const runCommand = dependencies.runCommand ?? runAgentCommand
-  const now = dependencies.now ?? Date.now
   const resolveClaudeVersion = dependencies.resolveClaudeVersion ?? resolveClaudeLatestVersion
-  return probeProvider(provider, context, runCommand, resolveClaudeVersion, now)
+  return probeProvider(provider, context, runCommand, resolveClaudeVersion)
 }
 
 export async function updateAgent(

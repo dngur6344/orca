@@ -22,8 +22,6 @@ function snapshot(overrides: Partial<AgentHealthSnapshot> = {}): AgentHealthSnap
     cliStatus: 'available',
     health: 'healthy',
     version: '0.146.1',
-    durationMs: 10,
-    checkedAt: 1,
     checks: [{ id: 'cli', status: 'ok' }],
     ...overrides
   }

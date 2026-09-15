@@ -19,7 +19,16 @@ type CodexDoctorCheck = {
 
 export type CodexDoctorReport = {
   checks: AgentHealthCheck[]
+  currentVersion: string | null
   latestVersion: string | null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function versionFromValue(value: unknown): string | null {
+  return typeof value === 'string' ? (value.match(VERSION_PATTERN)?.[0] ?? null) : null
 }
 
 function normalizedCheckStatus(value: unknown): AgentHealthCheckStatus | null {
@@ -36,24 +45,26 @@ function normalizedDoctorChecks(value: unknown): CodexDoctorCheck[] | null {
   let entries: [string | null, unknown][]
   if (Array.isArray(value)) {
     entries = value.map((check) => [null, check])
-  } else if (value && typeof value === 'object') {
+  } else if (isRecord(value)) {
     entries = Object.entries(value)
   } else {
     return null
   }
   return entries.flatMap(([fallbackId, check]) => {
-    if (!check || typeof check !== 'object') {
+    if (!isRecord(check)) {
       return []
     }
-    const raw = check as Record<string, unknown>
-    const id = typeof raw.id === 'string' ? raw.id : fallbackId
-    return id ? [{ id, status: raw.status, details: raw.details }] : []
+    const id = typeof check.id === 'string' ? check.id : fallbackId
+    return id ? [{ id, status: check.status, details: check.details }] : []
   })
 }
 
 export function parseCodexDoctorReport(output: string): CodexDoctorReport | null {
   try {
-    const report = JSON.parse(output) as { checks?: unknown }
+    const report: unknown = JSON.parse(output)
+    if (!isRecord(report)) {
+      return null
+    }
     const reportChecks = normalizedDoctorChecks(report.checks)
     if (!reportChecks) {
       return null
@@ -64,15 +75,14 @@ export function parseCodexDoctorReport(output: string): CodexDoctorReport | null
       return id && status ? [{ id, status }] : []
     })
     const updateDetails = reportChecks.find((check) => check.id === 'updates.status')?.details
-    const rawLatestVersion =
-      updateDetails && typeof updateDetails === 'object' && 'latest version' in updateDetails
-        ? updateDetails['latest version']
-        : null
-    const latestVersion =
-      typeof rawLatestVersion === 'string'
-        ? (rawLatestVersion.match(VERSION_PATTERN)?.[0] ?? null)
-        : null
-    return { checks, latestVersion }
+    const latestVersion = isRecord(updateDetails)
+      ? versionFromValue(updateDetails['latest version'])
+      : null
+    return {
+      checks,
+      currentVersion: versionFromValue(report.codexVersion),
+      latestVersion
+    }
   } catch {
     return null
   }

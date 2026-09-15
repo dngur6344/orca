@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AgentHealthProvider,
   AgentHealthSnapshot,
@@ -88,7 +88,8 @@ async function requestAgentUpdate(
 
 export function useAgentHealth(
   environmentId: string | null,
-  enabled = true
+  enabled = true,
+  providers: readonly AgentHealthProvider[] = AGENT_HEALTH_PROVIDERS
 ): AgentHealthProbeState {
   const [snapshots, setSnapshots] = useState<AgentHealthSnapshot[]>([])
   const [pendingProviders, setPendingProviders] = useState<
@@ -106,6 +107,19 @@ export function useAgentHealth(
   const legacyPendingRef = useRef(new Map<string, Promise<AgentHealthSnapshot[]>>())
   const mountedRef = useRef(true)
   const updatePendingRef = useRef(new Map<string, Promise<AgentUpdateResult | null>>())
+  const probesClaude = providers.includes('claude')
+  const probesCodex = providers.includes('codex')
+  const activeProviders = useMemo<AgentHealthProvider[]>(() => {
+    const active: AgentHealthProvider[] = []
+    if (probesClaude) {
+      active.push('claude')
+    }
+    if (probesCodex) {
+      active.push('codex')
+    }
+    return active
+  }, [probesClaude, probesCodex])
+  const hasActiveProviders = activeProviders.length > 0
 
   useEffect(() => {
     targetKeyRef.current = targetKey
@@ -178,7 +192,7 @@ export function useAgentHealth(
     if (!enabled) {
       return Promise.resolve([])
     }
-    return Promise.allSettled(AGENT_HEALTH_PROVIDERS.map((provider) => check(provider))).then(
+    return Promise.allSettled(activeProviders.map((provider) => check(provider))).then(
       (results) => {
         const failure = results.find((result) => result.status === 'rejected')
         if (failure?.status === 'rejected') {
@@ -189,7 +203,7 @@ export function useAgentHealth(
         )
       }
     )
-  }, [check, enabled])
+  }, [activeProviders, check, enabled])
 
   const update = useCallback(
     (provider: AgentHealthProvider): Promise<AgentUpdateResult | null> => {
@@ -234,16 +248,16 @@ export function useAgentHealth(
     setPendingProviders({})
     setFailedProviders({})
     setUpdateStates({})
-    if (!enabled) {
+    if (!enabled || !hasActiveProviders) {
       return
     }
     void refresh().catch(() => {})
     const interval = window.setInterval(() => void refresh().catch(() => {}), AGENT_HEALTH_POLL_MS)
     return () => window.clearInterval(interval)
-  }, [enabled, refresh])
+  }, [enabled, hasActiveProviders, refresh])
 
-  const isProbing = AGENT_HEALTH_PROVIDERS.some((provider) => pendingProviders[provider] === true)
-  const loadError = AGENT_HEALTH_PROVIDERS.some((provider) => failedProviders[provider] === true)
+  const isProbing = activeProviders.some((provider) => pendingProviders[provider] === true)
+  const loadError = activeProviders.some((provider) => failedProviders[provider] === true)
   return {
     snapshots,
     isProbing,
